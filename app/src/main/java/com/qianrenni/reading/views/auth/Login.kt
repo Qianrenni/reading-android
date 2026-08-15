@@ -20,6 +20,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -28,13 +32,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.qianrenni.reading.ForgetPassword
-import com.qianrenni.reading.Register
 import com.qianrenni.reading.components.CaptchaImage
 import com.qianrenni.reading.di.appContainer
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.ForgetPassword
+import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.PrivacyPolicy
+import com.qianrenni.reading.navigation.Register
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginView(
@@ -42,6 +48,8 @@ fun LoginView(
     viewModel: LoginViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var privacyAgreed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.start()
 
@@ -133,9 +141,37 @@ fun LoginView(
                 }
             }
 
+            // 用户协议与隐私政策同意
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Checkbox(
+                    checked = privacyAgreed,
+                    onCheckedChange = { privacyAgreed = it },
+                )
+                Text(
+                    text = "我已阅读并同意",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = { navigator.navigate(PrivacyPolicy) }) {
+                    Text(
+                        text = "《用户协议》和《隐私政策》",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
             Button(
                 onClick = {
-                    viewModel.login()
+                    if (!privacyAgreed) {
+                        scope.launch {
+                            SnackBarManager.showMessage("请先阅读并同意《用户协议》和《隐私政策》")
+                        }
+                    } else {
+                        viewModel.login()
+                    }
                 },
                 enabled = !loginState.isLoading,
                 modifier = Modifier.width(180.dp)

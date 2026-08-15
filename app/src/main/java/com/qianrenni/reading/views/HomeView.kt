@@ -37,11 +37,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.qianrenni.reading.BookInfo
 import com.qianrenni.reading.components.BookItem
-import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.data.model.Book
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.di.appContainer
+import com.qianrenni.reading.navigation.BookInfo
+import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.viewmodels.book.HomeViewModel
 
 @Composable

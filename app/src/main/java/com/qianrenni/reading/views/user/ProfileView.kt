@@ -3,25 +3,33 @@ package com.qianrenni.reading.views.user
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.qianrenni.reading.Login
-import com.qianrenni.reading.UpdatePassword
 import com.qianrenni.reading.di.appContainer
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.Login
+import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.UpdatePassword
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 
 @Composable
@@ -30,6 +38,9 @@ fun ProfileView(
     authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val user by authViewModel.getUser().collectAsStateWithLifecycle()
+    val appConfig = appContainer().appConfig
+    var showServerDialog by remember { mutableStateOf(false) }
+    var serverUrl by remember { mutableStateOf(appConfig.currentBaseUrl()) }
 
     Column(
         modifier = Modifier
@@ -91,6 +102,17 @@ fun ProfileView(
             }
         }
 
+        // 服务器地址设置
+        Button(
+            onClick = {
+                serverUrl = appConfig.currentBaseUrl()
+                showServerDialog = true
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("服务器设置")
+        }
+
         // 修改密码按钮
         Button(
             onClick = {
@@ -111,5 +133,41 @@ fun ProfileView(
         ) {
             Text("退出登录")
         }
+    }
+
+    // 服务器地址设置对话框
+    if (showServerDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerDialog = false },
+            title = { Text("服务器地址设置") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "修改后立即生效，无需重启应用。",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        singleLine = true,
+                        label = { Text("Base URL") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    appConfig.setBaseUrl(serverUrl)
+                    showServerDialog = false
+                }) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showServerDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }

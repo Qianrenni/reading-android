@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.qianrenni.reading.common.CommonUiState
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.Navigator
 
 
 @Composable

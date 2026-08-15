@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -19,7 +20,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -28,10 +32,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.qianrenni.reading.Login
 import com.qianrenni.reading.components.CaptchaImage
 import com.qianrenni.reading.di.appContainer
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.Login
+import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.PrivacyPolicy
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.RegisterViewModel
 import kotlinx.coroutines.launch
@@ -43,6 +48,7 @@ fun RegisterView(
 ) {
     val registerState by viewModel.registerState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    var privacyAgreed by remember { mutableStateOf(false) }
     LaunchedEffect(registerState.pageStatus.isError) {
         registerState.pageStatus.errorMessage?.let { error ->
             SnackBarManager.showMessage(error)
@@ -161,16 +167,44 @@ fun RegisterView(
                 )
             }
 
+            // 用户协议与隐私政策同意
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Checkbox(
+                    checked = privacyAgreed,
+                    onCheckedChange = { privacyAgreed = it },
+                )
+                Text(
+                    text = "我已阅读并同意",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                TextButton(onClick = { navigator.navigate(PrivacyPolicy) }) {
+                    Text(
+                        text = "《用户协议》和《隐私政策》",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
             Button(
                 onClick = {
-                    viewModel.register(
-                        onSuccess = {
-                            scope.launch {
-                                SnackBarManager.showMessage("注册成功，请登录")
-                            }
-                            navigator.navigate(Login)
+                    if (!privacyAgreed) {
+                        scope.launch {
+                            SnackBarManager.showMessage("请先阅读并同意《用户协议》和《隐私政策》")
                         }
-                    )
+                    } else {
+                        viewModel.register(
+                            onSuccess = {
+                                scope.launch {
+                                    SnackBarManager.showMessage("注册成功，请登录")
+                                }
+                                navigator.navigate(Login)
+                            }
+                        )
+                    }
                 },
                 enabled = !registerState.pageStatus.isLoading,
                 modifier = Modifier.width(180.dp)

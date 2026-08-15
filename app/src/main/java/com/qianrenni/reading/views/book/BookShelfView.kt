@@ -34,13 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.qianrenni.reading.BookRead
 import com.qianrenni.reading.R
 import com.qianrenni.reading.components.CommonPage
-import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.ShelfItem
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.di.appContainer
+import com.qianrenni.reading.navigation.BookRead
+import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.viewmodels.book.ShelfViewModel
 
 @Composable

@@ -1,4 +1,4 @@
-package com.qianrenni.reading
+package com.qianrenni.reading.navigation
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -14,14 +14,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.qianrenni.reading.components.BottomNavigationBar
 import com.qianrenni.reading.di.appContainer
-import com.qianrenni.reading.state.NavDecision
-import com.qianrenni.reading.state.Navigator
-import com.qianrenni.reading.state.rememberNavigationState
-import com.qianrenni.reading.state.toEntries
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import com.qianrenni.reading.views.HomeView
@@ -33,11 +31,15 @@ import com.qianrenni.reading.views.book.BookInfoView
 import com.qianrenni.reading.views.book.BookReadView
 import com.qianrenni.reading.views.book.BookShelfView
 import com.qianrenni.reading.views.book.ReadingHistoryView
+import com.qianrenni.reading.views.legal.PrivacyPolicyView
 import com.qianrenni.reading.views.user.ProfileView
 import io.ktor.util.reflect.instanceOf
 
 private const val TAG = "AppNavigation"
 
+/**
+ * App 导航入口。路由按 feature 分组注册，新增页面只需在对应 feature 中追加。
+ */
 @Composable
 fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory)) {
     val snackBarHostState = remember { SnackbarHostState() }
@@ -86,22 +88,12 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
         routesWithoutPadding.any { route::class == it }
     } ?: false
     val entryProvider = entryProvider {
-        entry<Login> { LoginView(navigator = navigator) }
-        entry<Register> { RegisterView(navigator = navigator) }
-        entry<ForgetPassword> { ForgetPasswordView(navigator = navigator) }
-        entry<UpdatePassword> { UpdatePasswordView(navigator = navigator) }
-        entry<Home> { HomeView(navigator = navigator) }
-        entry<History> { ReadingHistoryView(navigator = navigator) }
-        entry<Profile> { ProfileView(navigator = navigator) }
-        entry<Bookshelf> { BookShelfView(navigator = navigator) }
-        entry<BookRead> { key ->
-            BookReadView(
-                bookId = key.bookId,
-                chapterId = key.chapterId,
-                navigator = navigator
-            )
-        }
-        entry<BookInfo> { key -> BookInfoView(navigator = navigator, bookId = key.bookId) }
+        authFeature(navigator)
+        homeFeature(navigator)
+        bookFeature(navigator)
+        readerFeature(navigator)
+        userFeature(navigator)
+        legalFeature(navigator)
     }
     Scaffold(
         modifier = Modifier.background(color = MaterialTheme.colorScheme.background),
@@ -118,4 +110,45 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
             modifier = if (withOutPadding) Modifier else Modifier.padding(innerPadding),
         )
     }
+}
+
+/** 认证相关路由 */
+private fun EntryProviderScope<NavKey>.authFeature(navigator: Navigator) {
+    entry<Login> { LoginView(navigator = navigator) }
+    entry<Register> { RegisterView(navigator = navigator) }
+    entry<ForgetPassword> { ForgetPasswordView(navigator = navigator) }
+    entry<UpdatePassword> { UpdatePasswordView(navigator = navigator) }
+}
+
+/** 首页相关路由 */
+private fun EntryProviderScope<NavKey>.homeFeature(navigator: Navigator) {
+    entry<Home> { HomeView(navigator = navigator) }
+}
+
+/** 书籍相关路由 */
+private fun EntryProviderScope<NavKey>.bookFeature(navigator: Navigator) {
+    entry<Bookshelf> { BookShelfView(navigator = navigator) }
+    entry<History> { ReadingHistoryView(navigator = navigator) }
+    entry<BookInfo> { key -> BookInfoView(navigator = navigator, bookId = key.bookId) }
+}
+
+/** 阅读器相关路由 */
+private fun EntryProviderScope<NavKey>.readerFeature(navigator: Navigator) {
+    entry<BookRead> { key ->
+        BookReadView(
+            bookId = key.bookId,
+            chapterId = key.chapterId,
+            navigator = navigator
+        )
+    }
+}
+
+/** 用户相关路由 */
+private fun EntryProviderScope<NavKey>.userFeature(navigator: Navigator) {
+    entry<Profile> { ProfileView(navigator = navigator) }
+}
+
+/** 法务相关路由（用户协议、隐私政策等） */
+private fun EntryProviderScope<NavKey>.legalFeature(navigator: Navigator) {
+    entry<PrivacyPolicy> { PrivacyPolicyView(navigator = navigator) }
 }

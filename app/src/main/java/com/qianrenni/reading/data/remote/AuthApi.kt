@@ -16,7 +16,6 @@ import io.ktor.client.request.setBody
 interface AuthApi {
     suspend fun getCaptcha(): NetworkResult<ByteArray>
     suspend fun login(request: LoginRequest, captchaId: String?): NetworkResult<LoginResponse>
-    suspend fun refreshToken(): NetworkResult<LoginResponse>
     suspend fun getCurrentUser(): NetworkResult<User>
     suspend fun register(request: RegisterRequest): NetworkResult<Unit>
     suspend fun verifyEmail(request: EmailVerifyRequest): NetworkResult<Unit>
@@ -48,10 +47,6 @@ class AuthApiImpl(private val apiClient: ApiClient) : AuthApi {
             header("X-Captcha-Id", captchaId ?: lastXCaptchaId ?: "")
             setBody(request)
         }
-    }
-
-    override suspend fun refreshToken(): NetworkResult<LoginResponse> {
-        return apiClient.post("token/refresh")
     }
 
     override suspend fun getCurrentUser(): NetworkResult<User> {

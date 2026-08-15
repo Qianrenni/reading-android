@@ -12,11 +12,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
-import com.qianrenni.reading.Bookshelf
-import com.qianrenni.reading.History
-import com.qianrenni.reading.Home
-import com.qianrenni.reading.Profile
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.Bookshelf
+import com.qianrenni.reading.navigation.History
+import com.qianrenni.reading.navigation.Home
+import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.Profile
 
 data class BottomNavItem(
     val label: String,

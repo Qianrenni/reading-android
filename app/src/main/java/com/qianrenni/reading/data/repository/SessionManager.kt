@@ -2,7 +2,10 @@ package com.qianrenni.reading.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.qianrenni.reading.data.model.User
+import io.ktor.client.plugins.auth.providers.BearerTokens
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,14 +20,13 @@ data class SavedTokens(
 )
 
 /**
- * 会话管理器：内存中的用户/令牌状态 + SharedPreferences 持久化。
+ * 会话管理器：内存中的用户/令牌状态 + EncryptedSharedPreferences 加密持久化。
  *
  * 替换原全局单例 AuthStore，通过 AppContainer 注入，可被测试替换为 Fake。
  */
 class SessionManager(context: Context) {
 
-    private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = createEncryptedPrefs(context)
 
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
@@ -34,12 +36,22 @@ class SessionManager(context: Context) {
     private var tokenType: String? = null
 
     /**
-     * 构造 Authorization 头值（如 "Bearer xxx"），无令牌时返回 null。
+     * 供 Ktor Auth 插件读取当前令牌；无则返回 null（不携带 Authorization 头）。
      */
-    fun authHeaderValue(): String? {
-        val token = accessToken
-        val type = tokenType
-        return if (token != null && type != null) "$type $token" else null
+    fun bearerTokens(): BearerTokens? {
+        val access = accessToken ?: return null
+        val refresh = refreshToken ?: return null
+        return BearerTokens(access, refresh)
+    }
+
+    /**
+     * 读取当前内存中的令牌（含 tokenType）。
+     */
+    fun tokens(): SavedTokens? {
+        val access = accessToken ?: return null
+        val refresh = refreshToken ?: return null
+        val type = tokenType ?: return null
+        return SavedTokens(access, refresh, type)
     }
 
     fun setToken(
@@ -61,7 +73,7 @@ class SessionManager(context: Context) {
     }
 
     /**
-     * 读取持久化的令牌；无则返回 null。
+     * 读取持久化的令牌（应用启动时恢复会话用）；无则返回 null。
      */
     fun savedTokens(): SavedTokens? {
         val access = prefs.getString("access_token", null) ?: return null
@@ -91,5 +103,18 @@ class SessionManager(context: Context) {
             .remove("refresh_token")
             .remove("token_type")
             .apply()
+    }
+
+    private fun createEncryptedPrefs(context: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            "auth_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 }

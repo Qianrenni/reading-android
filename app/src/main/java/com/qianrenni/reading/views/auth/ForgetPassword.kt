@@ -26,9 +26,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.qianrenni.reading.Login
 import com.qianrenni.reading.di.appContainer
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.Login
+import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 

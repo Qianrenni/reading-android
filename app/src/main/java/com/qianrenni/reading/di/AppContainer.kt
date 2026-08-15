@@ -20,13 +20,17 @@ import com.qianrenni.reading.data.remote.ReportApi
 import com.qianrenni.reading.data.remote.ReportApiImpl
 import com.qianrenni.reading.data.remote.ShelfApi
 import com.qianrenni.reading.data.remote.ShelfApiImpl
+import com.qianrenni.reading.data.remote.TokenRefresher
 import com.qianrenni.reading.data.remote.UserApi
 import com.qianrenni.reading.data.remote.UserApiImpl
+import com.qianrenni.reading.data.repository.AppConfigRepository
+import com.qianrenni.reading.data.repository.AppConfigRepositoryImpl
 import com.qianrenni.reading.data.repository.AuthRepository
 import com.qianrenni.reading.data.repository.AuthRepositoryImpl
 import com.qianrenni.reading.data.repository.SessionManager
 import com.qianrenni.reading.data.repository.SettingsRepository
 import com.qianrenni.reading.data.repository.SettingsRepositoryImpl
+import io.ktor.client.HttpClient
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
@@ -48,12 +52,30 @@ class AppContainer(private val context: Context) {
 
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
-    // ---- 会话 / 网络 ----
+    // ---- 会话 / 配置 / 网络 ----
     val sessionManager: SessionManager = SessionManager(context)
+    val appConfig: AppConfigRepository = AppConfigRepositoryImpl(context)
+
+    // 裸客户端：用于令牌刷新（避免 Auth 递归）
+    private val bareClient: HttpClient = HttpClientFactory.createBareClient()
+    private val tokenRefresher: TokenRefresher =
+        TokenRefresher(bareClient, { appConfig.currentBaseUrl() })
+
+    // 主客户端：Ktor Auth(Bearer) 自动注入令牌、401 自动刷新并重试
+    private val authClient: HttpClient = HttpClientFactory.createAuthClient(
+        onLoadTokens = { sessionManager.bearerTokens() },
+        onRefreshTokens = {
+            val saved = sessionManager.tokens() ?: return@createAuthClient null
+            val refreshed = tokenRefresher.refresh(saved.tokenType, saved.refreshToken)
+                ?: return@createAuthClient null
+            sessionManager.setToken(refreshed.accessToken, refreshed.refreshToken, refreshed.tokenType)
+            sessionManager.bearerTokens()
+        }
+    )
 
     private val apiClient: ApiClient = ApiClient(
-        client = HttpClientFactory.create(),
-        tokenProvider = { sessionManager.authHeaderValue() },
+        client = authClient,
+        baseUrlProvider = { appConfig.currentBaseUrl() },
         onUnauthorized = { sessionManager.clear() }
     )
 
@@ -67,7 +89,7 @@ class AppContainer(private val context: Context) {
     val userApi: UserApi = UserApiImpl(apiClient)
 
     // ---- Repository ----
-    val authRepository: AuthRepository = AuthRepositoryImpl(sessionManager, authApi)
+    val authRepository: AuthRepository = AuthRepositoryImpl(sessionManager, authApi, tokenRefresher)
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context)
 
     // ---- ViewModel 工厂（手动 DI）----

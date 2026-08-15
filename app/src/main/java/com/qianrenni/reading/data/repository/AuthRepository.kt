@@ -3,6 +3,7 @@ package com.qianrenni.reading.data.repository
 import com.qianrenni.reading.data.model.User
 import com.qianrenni.reading.data.remote.AuthApi
 import com.qianrenni.reading.data.remote.NetworkResult
+import com.qianrenni.reading.data.remote.TokenRefresher
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -22,6 +23,7 @@ interface AuthRepository {
 class AuthRepositoryImpl(
     private val session: SessionManager,
     private val authApi: AuthApi,
+    private val tokenRefresher: TokenRefresher,
 ) : AuthRepository {
 
     override val user: StateFlow<User?>
@@ -39,11 +41,10 @@ class AuthRepositoryImpl(
         }
 
         // 尝试 2：用 refresh token 刷新令牌
-        session.setToken(saved.refreshToken, saved.refreshToken, saved.tokenType, isSave = false)
-        val refreshed = authApi.refreshToken()
-        if (refreshed is NetworkResult.Success) {
-            session.setToken(refreshed.data.accessToken, refreshed.data.refreshToken, refreshed.data.tokenType)
-            session.setUser(refreshed.data.user)
+        val refreshed = tokenRefresher.refresh(saved.tokenType, saved.refreshToken)
+        if (refreshed != null) {
+            session.setToken(refreshed.accessToken, refreshed.refreshToken, refreshed.tokenType)
+            session.setUser(refreshed.user)
         }
     }
 

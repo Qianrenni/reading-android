@@ -1,4 +1,4 @@
-package com.qianrenni.reading.state
+package com.qianrenni.reading.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState

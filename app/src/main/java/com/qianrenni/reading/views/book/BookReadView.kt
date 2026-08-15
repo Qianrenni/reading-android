@@ -76,7 +76,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.qianrenni.reading.BookInfo
 import com.qianrenni.reading.R
 import com.qianrenni.reading.components.BottomControlBar
 import com.qianrenni.reading.components.CatalogDrawer
@@ -85,7 +84,8 @@ import com.qianrenni.reading.components.InfiniteHorizontalPager
 import com.qianrenni.reading.components.ReadingSettings
 import com.qianrenni.reading.data.model.ReadSettings
 import com.qianrenni.reading.di.appContainer
-import com.qianrenni.reading.state.Navigator
+import com.qianrenni.reading.navigation.BookInfo
+import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.util.SystemBarUtils
 import com.qianrenni.reading.viewmodels.book.BookReadViewModel
 import kotlinx.coroutines.Dispatchers

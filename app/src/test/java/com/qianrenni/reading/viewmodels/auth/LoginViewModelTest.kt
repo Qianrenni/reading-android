@@ -33,7 +33,6 @@ class LoginViewModelTest {
     private class FakeAuthApi(var loginResult: NetworkResult<LoginResponse>) : AuthApi {
         override suspend fun getCaptcha() = NetworkResult.Failure("n/a")
         override suspend fun login(request: LoginRequest, captchaId: String?) = loginResult
-        override suspend fun refreshToken() = NetworkResult.Failure("n/a")
         override suspend fun getCurrentUser() = NetworkResult.Failure("n/a")
         override suspend fun register(request: RegisterRequest) = NetworkResult.Empty()
         override suspend fun verifyEmail(request: EmailVerifyRequest) = NetworkResult.Empty()
@@ -118,7 +117,6 @@ class LoginViewModelTest {
                 return NetworkResult.Success(loginResponse())
             }
 
-            override suspend fun refreshToken() = NetworkResult.Failure("n/a")
             override suspend fun getCurrentUser() = NetworkResult.Failure("n/a")
             override suspend fun register(request: RegisterRequest) = NetworkResult.Empty()
             override suspend fun verifyEmail(request: EmailVerifyRequest) = NetworkResult.Empty()
