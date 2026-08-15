@@ -113,7 +113,7 @@ typealias NavInterceptor = (
 class Navigator(val state: NavigationState) {
     // 拦截器列表（按添加顺序执行）
     val currentState
-        get() = state.backStacks[state.topLevelRoute]?.last()
+        get() = state.backStacks[state.topLevelRoute]?.lastOrNull()
     private val interceptors = mutableListOf<NavInterceptor>()
     fun addInterceptor(interceptor: NavInterceptor) {
         interceptors.add(interceptor)

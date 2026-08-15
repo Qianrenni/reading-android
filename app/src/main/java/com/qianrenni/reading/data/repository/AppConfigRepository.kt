@@ -1,7 +1,5 @@
 package com.qianrenni.reading.data.repository
 
-import android.content.Context
-import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 const val DEFAULT_BASE_URL = "http://49.235.107.221:8000/"
 
 /**
- * 应用级配置仓库：服务器地址等，持久化到 SharedPreferences，
+ * 应用级配置仓库：服务器地址等，持久化到 [KeyValueStore]，
  * 打包后仍可在应用内动态修改、立即生效（无需重启）。
  */
 interface AppConfigRepository {
@@ -23,13 +21,10 @@ interface AppConfigRepository {
     fun setBaseUrl(url: String)
 }
 
-class AppConfigRepositoryImpl(context: Context) : AppConfigRepository {
-
-    private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences("app_config", Context.MODE_PRIVATE)
+class AppConfigRepositoryImpl(private val store: KeyValueStore) : AppConfigRepository {
 
     private val _baseUrl = MutableStateFlow(
-        prefs.getString(KEY_BASE_URL, null) ?: DEFAULT_BASE_URL
+        store.getString(KEY_BASE_URL) ?: DEFAULT_BASE_URL
     )
 
     override val baseUrl: StateFlow<String> = _baseUrl.asStateFlow()
@@ -38,7 +33,7 @@ class AppConfigRepositoryImpl(context: Context) : AppConfigRepository {
 
     override fun setBaseUrl(url: String) {
         val normalized = url.trim().trimEnd('/') + "/"
-        prefs.edit().putString(KEY_BASE_URL, normalized).apply()
+        store.putString(KEY_BASE_URL, normalized)
         _baseUrl.value = normalized
     }
 

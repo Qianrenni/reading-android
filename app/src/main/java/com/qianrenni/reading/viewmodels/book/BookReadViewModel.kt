@@ -70,7 +70,8 @@ class BookReadViewModel(
     private val _uiState = MutableStateFlow(BookReadUiState())
     val uiState: StateFlow<BookReadUiState> = _uiState.asStateFlow()
     private val chaptersCache = LruCache<Int, List<PageChapterItem>>(5)
-    val bookChapterChannel = Channel<BookChapter>()
+    // 使用无界缓冲，避免无人接收时 send 挂起（便于测试与消费解耦）
+    val bookChapterChannel = Channel<BookChapter>(Channel.UNLIMITED)
     val lock = Any()
     private val pageSize = 3
     private var heartbeatJob: Job? = null

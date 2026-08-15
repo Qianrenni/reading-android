@@ -14,6 +14,7 @@ import com.qianrenni.reading.data.remote.BookApiImpl
 import com.qianrenni.reading.data.remote.CommentApi
 import com.qianrenni.reading.data.remote.CommentApiImpl
 import com.qianrenni.reading.data.remote.HttpClientFactory
+import com.qianrenni.reading.data.remote.KtorTokenRefresher
 import com.qianrenni.reading.data.remote.ReadingProgressApi
 import com.qianrenni.reading.data.remote.ReadingProgressApiImpl
 import com.qianrenni.reading.data.remote.ReportApi
@@ -27,10 +28,18 @@ import com.qianrenni.reading.data.repository.AppConfigRepository
 import com.qianrenni.reading.data.repository.AppConfigRepositoryImpl
 import com.qianrenni.reading.data.repository.AuthRepository
 import com.qianrenni.reading.data.repository.AuthRepositoryImpl
+import com.qianrenni.reading.data.repository.EncryptedKeyValueStore
 import com.qianrenni.reading.data.repository.SessionManager
+import com.qianrenni.reading.data.repository.SharedPrefsKeyValueStore
 import com.qianrenni.reading.data.repository.SettingsRepository
 import com.qianrenni.reading.data.repository.SettingsRepositoryImpl
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
@@ -53,13 +62,13 @@ class AppContainer(private val context: Context) {
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
     // ---- 会话 / 配置 / 网络 ----
-    val sessionManager: SessionManager = SessionManager(context)
-    val appConfig: AppConfigRepository = AppConfigRepositoryImpl(context)
+    val sessionManager: SessionManager = SessionManager(EncryptedKeyValueStore(context, "auth_prefs"))
+    val appConfig: AppConfigRepository = AppConfigRepositoryImpl(SharedPrefsKeyValueStore(context, "app_config"))
 
     // 裸客户端：用于令牌刷新（避免 Auth 递归）
     private val bareClient: HttpClient = HttpClientFactory.createBareClient()
     private val tokenRefresher: TokenRefresher =
-        TokenRefresher(bareClient, { appConfig.currentBaseUrl() })
+        KtorTokenRefresher(bareClient, { appConfig.currentBaseUrl() })
 
     // 主客户端：Ktor Auth(Bearer) 自动注入令牌、401 自动刷新并重试
     private val authClient: HttpClient = HttpClientFactory.createAuthClient(
@@ -90,7 +99,15 @@ class AppContainer(private val context: Context) {
 
     // ---- Repository ----
     val authRepository: AuthRepository = AuthRepositoryImpl(sessionManager, authApi, tokenRefresher)
-    val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context)
+
+    // 阅读设置 DataStore（单例，进程级存活）
+    private val settingsDataStore: DataStore<Preferences> by lazy {
+        PreferenceDataStoreFactory.create(
+            scope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+            produceFile = { context.preferencesDataStoreFile("read_settings") }
+        )
+    }
+    val settingsRepository: SettingsRepository = SettingsRepositoryImpl(settingsDataStore)
 
     // ---- ViewModel 工厂（手动 DI）----
     val viewModelFactory = viewModelFactory {

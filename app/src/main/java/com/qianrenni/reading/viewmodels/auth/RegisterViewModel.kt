@@ -1,6 +1,5 @@
 package com.qianrenni.reading.viewmodels.auth
 
-import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
@@ -9,6 +8,7 @@ import com.qianrenni.reading.data.model.EmailVerifyRequest
 import com.qianrenni.reading.data.model.RegisterRequest
 import com.qianrenni.reading.data.model.UserRegister
 import com.qianrenni.reading.data.remote.AuthApi
+import com.qianrenni.reading.util.isValidEmail
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +62,7 @@ class RegisterViewModel(
     fun verifyEmail(onSuccess: () -> Unit = {}) {
         val email = registerState.value.email
 
-        if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        if (email.isEmpty() || !isValidEmail(email)) {
             _registerState.update { it.copy(pageStatus = it.pageStatus.error("邮箱格式不正确")) }
             return
         }
@@ -91,7 +91,7 @@ class RegisterViewModel(
             return
         }
 
-        if (!Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
+        if (!isValidEmail(state.email)) {
             _registerState.update { it.copy(pageStatus = it.pageStatus.error("邮箱格式不正确")) }
             return
         }

@@ -8,6 +8,7 @@ import com.qianrenni.reading.data.model.UpdatePasswordRequest
 import com.qianrenni.reading.data.remote.UserApi
 import com.qianrenni.reading.data.repository.AuthRepository
 import com.qianrenni.reading.util.SnackBarManager
+import com.qianrenni.reading.util.isValidEmail
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,7 +74,7 @@ class UpdatePasswordViewModel(
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
+        if (!isValidEmail(state.email)) {
             _updatePasswordState.update { it.copy(pageStatus = it.pageStatus.error("邮箱格式不正确")) }
             return
         }

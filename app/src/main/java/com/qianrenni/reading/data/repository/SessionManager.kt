@@ -1,9 +1,5 @@
 package com.qianrenni.reading.data.repository
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import com.qianrenni.reading.data.model.User
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,13 +16,12 @@ data class SavedTokens(
 )
 
 /**
- * 会话管理器：内存中的用户/令牌状态 + EncryptedSharedPreferences 加密持久化。
+ * 会话管理器：内存中的用户/令牌状态 + [KeyValueStore] 持久化。
  *
- * 替换原全局单例 AuthStore，通过 AppContainer 注入，可被测试替换为 Fake。
+ * 存储实现由外部注入（生产环境为 [EncryptedKeyValueStore]），
+ * 便于单元测试替换为内存实现。
  */
-class SessionManager(context: Context) {
-
-    private val prefs: SharedPreferences = createEncryptedPrefs(context)
+class SessionManager(private val store: KeyValueStore) {
 
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user.asStateFlow()
@@ -76,18 +71,16 @@ class SessionManager(context: Context) {
      * 读取持久化的令牌（应用启动时恢复会话用）；无则返回 null。
      */
     fun savedTokens(): SavedTokens? {
-        val access = prefs.getString("access_token", null) ?: return null
-        val refresh = prefs.getString("refresh_token", null) ?: return null
-        val type = prefs.getString("token_type", null) ?: return null
+        val access = store.getString(KEY_ACCESS) ?: return null
+        val refresh = store.getString(KEY_REFRESH) ?: return null
+        val type = store.getString(KEY_TYPE) ?: return null
         return SavedTokens(access, refresh, type)
     }
 
     private fun saveTokens() {
-        prefs.edit()
-            .putString("access_token", accessToken)
-            .putString("refresh_token", refreshToken)
-            .putString("token_type", tokenType)
-            .apply()
+        store.putString(KEY_ACCESS, accessToken.orEmpty())
+        store.putString(KEY_REFRESH, refreshToken.orEmpty())
+        store.putString(KEY_TYPE, tokenType.orEmpty())
     }
 
     /**
@@ -98,23 +91,14 @@ class SessionManager(context: Context) {
         accessToken = null
         refreshToken = null
         tokenType = null
-        prefs.edit()
-            .remove("access_token")
-            .remove("refresh_token")
-            .remove("token_type")
-            .apply()
+        store.remove(KEY_ACCESS)
+        store.remove(KEY_REFRESH)
+        store.remove(KEY_TYPE)
     }
 
-    private fun createEncryptedPrefs(context: Context): SharedPreferences {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        return EncryptedSharedPreferences.create(
-            context,
-            "auth_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+    private companion object {
+        const val KEY_ACCESS = "access_token"
+        const val KEY_REFRESH = "refresh_token"
+        const val KEY_TYPE = "token_type"
     }
 }

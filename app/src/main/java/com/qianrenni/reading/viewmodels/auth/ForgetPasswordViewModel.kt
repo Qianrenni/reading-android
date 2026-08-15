@@ -7,6 +7,7 @@ import com.qianrenni.reading.common.CommonUiState
 import com.qianrenni.reading.data.model.ForgotPasswordRequest
 import com.qianrenni.reading.data.remote.UserApi
 import com.qianrenni.reading.util.SnackBarManager
+import com.qianrenni.reading.util.isValidEmail
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +65,7 @@ class ForgetPasswordViewModel(
     fun sendVerificationCode() {
         val email = forgetPasswordState.value.email
 
-        if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        if (email.isEmpty() || !isValidEmail(email)) {
             _forgetPasswordState.update { it.copy(pageStatus = it.pageStatus.error("邮箱格式不正确")) }
             return
         }
@@ -100,7 +101,7 @@ class ForgetPasswordViewModel(
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
+        if (!isValidEmail(state.email)) {
             _forgetPasswordState.update { it.copy(pageStatus = it.pageStatus.error("邮箱格式不正确")) }
             return
         }
