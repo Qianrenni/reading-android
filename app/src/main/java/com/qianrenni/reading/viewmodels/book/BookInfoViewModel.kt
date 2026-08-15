@@ -6,8 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
 import com.qianrenni.reading.data.api.BookService
+import com.qianrenni.reading.data.api.CommentService
+import com.qianrenni.reading.data.api.NetworkResult
 import com.qianrenni.reading.data.model.Book
+import com.qianrenni.reading.data.model.BookComment
 import com.qianrenni.reading.data.model.Catalog
+import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.util.indexToCN
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -15,12 +19,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class UiState(
     val book: Book? = null,
     val catalog: List<Catalog> = emptyList(),
     val relatedBooks: List<Book> = emptyList(),
     val selectedTabIndex: Int = 0,
+    // ===== 书评 =====
+    val reviews: List<BookComment> = emptyList(),
+    val reviewTotal: Int = 0,
+    val reviewPage: Int = 1,
+    val reviewSize: Int = 5,
+    val myReview: BookComment? = null,
+    val reviewsLoading: Boolean = false,
     override val pageStatus: CommonPageStatus = CommonPageStatus()
 ) : CommonUiState
 
@@ -95,5 +107,88 @@ class BookInfoViewModel : ViewModel() {
 
     fun selectTab(index: Int) {
         _uiState.update { it.copy(selectedTabIndex = index) }
+    }
+
+    // ==================== 书评 ====================
+
+    /** 分页加载书评列表 */
+    fun loadReviews(bookId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val state = _uiState.value
+            _uiState.update { it.copy(reviewsLoading = true) }
+            val result = CommentService.getBookReviews(bookId, state.reviewPage, state.reviewSize)
+            result.onSuccess { page ->
+                _uiState.update {
+                    it.copy(
+                        reviews = page.items,
+                        reviewTotal = page.total,
+                        reviewsLoading = false
+                    )
+                }
+            }
+            result.onFailure { message, _, _ ->
+                _uiState.update { it.copy(reviewsLoading = false) }
+                SnackBarManager.showMessage(message)
+            }
+        }
+    }
+
+    /** 加载自己的书评（无则置 null） */
+    fun loadMyReview(bookId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = CommentService.getMyBookReview(bookId)
+            when (result) {
+                is NetworkResult.Success -> _uiState.update { it.copy(myReview = result.data) }
+                is NetworkResult.Empty -> _uiState.update { it.copy(myReview = null) }
+                is NetworkResult.Failure -> Unit
+            }
+        }
+    }
+
+    /** 翻页 */
+    fun setReviewPage(page: Int) {
+        val current = _uiState.value
+        if (page == current.reviewPage) return
+        _uiState.update { it.copy(reviewPage = page) }
+        current.book?.id?.let { loadReviews(it) }
+    }
+
+    /** 发布/编辑自己的书评 */
+    fun createReview(bookId: Int, content: String, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val trimmed = content.trim()
+            if (trimmed.isEmpty()) {
+                SnackBarManager.showMessage("评论内容不能为空")
+                return@launch
+            }
+            if (trimmed.length > 300) {
+                SnackBarManager.showMessage("评论内容不能超过300字")
+                return@launch
+            }
+            val result = CommentService.createBookReview(bookId, trimmed)
+            if (result is NetworkResult.Success || result is NetworkResult.Empty) {
+                SnackBarManager.showMessage("书评发布成功")
+                loadReviews(bookId)
+                loadMyReview(bookId)
+                withContext(Dispatchers.Main) { onSuccess() }
+            } else {
+                SnackBarManager.showMessage((result as? NetworkResult.Failure)?.message ?: "发布失败")
+            }
+        }
+    }
+
+    /** 删除自己的书评 */
+    fun deleteReview(bookId: Int, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = CommentService.deleteBookReview(bookId)
+            if (result is NetworkResult.Success || result is NetworkResult.Empty) {
+                SnackBarManager.showMessage("书评已删除")
+                loadReviews(bookId)
+                loadMyReview(bookId)
+                withContext(Dispatchers.Main) { onSuccess() }
+            } else {
+                SnackBarManager.showMessage((result as? NetworkResult.Failure)?.message ?: "删除失败")
+            }
+        }
     }
 }

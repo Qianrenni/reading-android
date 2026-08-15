@@ -33,11 +33,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -46,8 +51,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
@@ -62,6 +69,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextIndent
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -77,6 +85,7 @@ import com.qianrenni.reading.components.CommonPage
 import com.qianrenni.reading.components.InfiniteHorizontalPager
 import com.qianrenni.reading.components.ReadingSettings
 import com.qianrenni.reading.data.model.ReadSettings
+import com.qianrenni.reading.data.store.AuthStore
 import com.qianrenni.reading.data.store.SettingsRepository
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.util.SystemBarUtils
@@ -94,10 +103,13 @@ suspend fun measureText(
     widthPx: Float,
     textMeasurer: TextMeasurer,
     readSettings: ReadSettings,
-    onCallBack: (List<Boolean>, List<List<String>>) -> Unit
+    onCallBack: (List<Boolean>, List<List<String>>, List<Int>) -> Unit
 ) {
     withContext(Dispatchers.Default) {
         val newPages = mutableListOf<List<String>>()
+        // 每页首段在整个章节中的行号（用于行评论定位）
+        val startLines = mutableListOf<Int>()
+        var lineCount = 0
         var startIndex = 0
         val processedContent =
             content.split(Regex("\\s+"))
@@ -164,6 +176,8 @@ suspend fun measureText(
             best.let {
                 if (it.isNotEmpty()) {
                     newPages.add(best)
+                    startLines.add(lineCount)
+                    lineCount += best.size
                     tempIsIndent.add(
                         processedContent[bestFitIndex.coerceIn(
                             0,
@@ -174,10 +188,11 @@ suspend fun measureText(
             }
             startIndex = bestFitIndex
         }
-        onCallBack(tempIsIndent.toList(), newPages)
+        onCallBack(tempIsIndent.toList(), newPages, startLines)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReadView(
     context: Context,
@@ -203,6 +218,10 @@ fun BookReadView(
 
     var isAscending by remember { mutableStateOf(true) }
     val lazyListState = rememberLazyListState()
+    // 行评论弹层状态
+    var selectedCommentLine by remember { mutableStateOf<Int?>(null) }
+    var selectedLineText by remember { mutableStateOf("") }
+    var commentInput by remember { mutableStateOf("") }
     val colorScheme = MaterialTheme.colorScheme
     val settingsRepository =
         remember { SettingsRepository(context, colorScheme) }
@@ -271,11 +290,12 @@ fun BookReadView(
                                 readSettings = readSettings,
                                 heightPx = height,
                                 widthPx = availableWidth,
-                                onCallBack = { indents, contents ->
+                                onCallBack = { indents, contents, startLines ->
                                     viewModel.addPages(
                                         it.chapterId,
                                         indents = indents,
-                                        contents = contents
+                                        contents = contents,
+                                        startLines = startLines
                                     )
                                 }
                             )
@@ -337,11 +357,17 @@ fun BookReadView(
                         )
                         ChapterPage(
                             content = page.contents,
+                            startLine = page.startLine,
                             settings = readSettings,
                             firstIndent = page.firstLineIndent,
                             modifier = Modifier
                                 .weight(1f),
-                            endClip = page.endClip
+                            endClip = page.endClip,
+                            commentCounts = uiState.chapterComments.mapValues { it.value.size },
+                            onLineClick = { line, lineText ->
+                                selectedCommentLine = line
+                                selectedLineText = lineText
+                            }
                         )
                     }
                 }
@@ -440,15 +466,138 @@ fun BookReadView(
 
         }
     }
+
+    // ===== 行评论底部弹层 =====
+    selectedCommentLine?.let { line ->
+        val chapterId = uiState.catalog.getOrNull(uiState.currentIndex)?.id ?: 0
+        val comments = uiState.chapterComments[line].orEmpty()
+        val currentUserId = AuthStore.user.value?.id
+        ModalBottomSheet(
+            onDismissRequest = { selectedCommentLine = null }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "第 ${line + 1} 行评论",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (selectedLineText.isNotBlank()) {
+                    Text(
+                        text = selectedLineText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                HorizontalDivider()
+                if (comments.isEmpty()) {
+                    Text(
+                        text = "暂无评论，快来发表第一条吧～",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        comments.forEach { comment ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(
+                                            model = comment.userAvatar.ifEmpty { null }
+                                        ),
+                                        contentDescription = comment.userName,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = comment.userName,
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                        Text(
+                                            text = comment.createdAt.split('T').firstOrNull() ?: "",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Text(
+                                        text = comment.content,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                if (comment.userId == currentUserId) {
+                                    TextButton(onClick = {
+                                        if (chapterId > 0) {
+                                            viewModel.deleteLineComment(chapterId, comment)
+                                        }
+                                    }) {
+                                        Text(
+                                            text = "删除",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                HorizontalDivider()
+                OutlinedTextField(
+                    value = commentInput,
+                    onValueChange = { commentInput = it.take(2000) },
+                    placeholder = { Text("写下你的看法（2000字以内）") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(onClick = {
+                        if (chapterId > 0) {
+                            viewModel.createLineComment(chapterId, line, commentInput) {
+                                commentInput = ""
+                            }
+                        }
+                    }) {
+                        Text("发表评论")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun ChapterPage(
     modifier: Modifier = Modifier,
     content: List<String>,
+    startLine: Int,
     settings: ReadSettings,
     firstIndent: Boolean = false,
-    endClip: Boolean = false
+    endClip: Boolean = false,
+    commentCounts: Map<Int, Int> = emptyMap(),
+    onLineClick: (Int, String) -> Unit
 ) {
     val icon = "ChatBubbleOutline"
     Column(
@@ -456,6 +605,8 @@ private fun ChapterPage(
         verticalArrangement = Arrangement.spacedBy((2 * settings.fontSize).dp)
     ) {
         content.forEachIndexed { index, paragraph ->
+            // 当前段落在整个章节中的行号
+            val line = startLine + index
             // 1. 构建 AnnotatedString，在段落末尾插入占位符
             val annotatedText = buildAnnotatedString {
                 append(paragraph)
@@ -493,13 +644,34 @@ private fun ChapterPage(
                             placeholderVerticalAlign = PlaceholderVerticalAlign.TextBottom
                         )
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Comment,
-                            contentDescription = "Chat Bubble Outline",
-                            modifier = Modifier
-                                .size(settings.fontSize.dp),
-                            tint = Color(settings.textColor)
-                        )
+                        Box(
+                            modifier = Modifier.size(settings.fontSize.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Comment,
+                                contentDescription = "查看本行评论",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { onLineClick(line, paragraph) },
+                                tint = Color(settings.textColor)
+                            )
+                            val count = commentCounts[line]
+                            if (count != null && count > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(Color(0xFFDCA000), CircleShape)
+                                        .padding(horizontal = 3.dp, vertical = 1.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (count > 99) "99+" else "$count",
+                                        color = Color.White,
+                                        fontSize = 8.sp
+                                    )
+                                }
+                            }
+                        }
                     },
                 )
             )

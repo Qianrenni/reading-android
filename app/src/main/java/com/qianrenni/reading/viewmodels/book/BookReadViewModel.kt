@@ -8,12 +8,16 @@ import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
 import com.qianrenni.reading.data.api.BookService
+import com.qianrenni.reading.data.api.CommentService
+import com.qianrenni.reading.data.api.NetworkResult
 import com.qianrenni.reading.data.api.ReadingProgressService
 import com.qianrenni.reading.data.api.ReportService
 import com.qianrenni.reading.data.model.Book
+import com.qianrenni.reading.data.model.BookChapterComment
 import com.qianrenni.reading.data.model.Catalog
 import com.qianrenni.reading.data.model.ReadEvent
 import com.qianrenni.reading.data.model.UpdateProgressRequest
+import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.util.indexToCN
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,13 +29,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.internal.notifyAll
 import okhttp3.internal.wait
 import kotlin.time.Duration.Companion.seconds
 
 data class BookChapter(val chapterId: Int, val chapterContent: String)
 data class PageChapterItem(
-    val contents: List<String>, val firstLineIndent: Boolean, val endClip: Boolean = true
+    val contents: List<String>,
+    val firstLineIndent: Boolean,
+    val startLine: Int = 0,
+    val endClip: Boolean = true
 )
 
 data class BookReadUiState(
@@ -44,6 +52,8 @@ data class BookReadUiState(
     val currentIndex: Int = -1,
     val currentPageIndex: Int = 0,
     val isSystemBarsHidden: Boolean = true,
+    // 当前章节行评论：行号 -> 评论列表
+    val chapterComments: Map<Int, List<BookChapterComment>> = emptyMap(),
     override val pageStatus: CommonPageStatus = CommonPageStatus()
 ) : CommonUiState
 
@@ -167,16 +177,19 @@ class BookReadViewModel(
                     currentPageIndex = currentPage
                 )
             }
+            // 切换章节后加载该章行评论
+            loadChapterComments(catalog[updateCurrentIndex].id)
             Log.d(TAG, "refreshPages: ${uiState.value.pages}")
         }
 
     }
 
-    fun addPages(chapterId: Int, indents: List<Boolean>, contents: List<List<String>>) {
+    fun addPages(chapterId: Int, indents: List<Boolean>, contents: List<List<String>>, startLines: List<Int>) {
         val pageChapterItem = contents.mapIndexed { index, strings ->
             PageChapterItem(
                 firstLineIndent = indents[index],
                 contents = strings,
+                startLine = startLines.getOrElse(index) { 0 },
                 endClip = if (index < contents.size - 1) {
                     !indents[index + 1]
                 } else {
@@ -335,6 +348,75 @@ class BookReadViewModel(
                 showBottomControls = false,
                 isSystemBarsHidden = true,
             )
+        }
+    }
+
+    // ==================== 行评论 ====================
+
+    /** 加载某章行评论（仅当该章为当前章时生效） */
+    fun loadChapterComments(chapterId: Int) {
+        val bookId = uiState.value.book?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = CommentService.getChapterComments(bookId, chapterId)
+            result.onSuccess { map ->
+                _uiState.update {
+                    if (it.currentIndex >= 0 &&
+                        it.catalog.getOrNull(it.currentIndex)?.id == chapterId
+                    ) {
+                        it.copy(chapterComments = map)
+                    } else {
+                        it
+                    }
+                }
+            }
+        }
+    }
+
+    /** 发表某行评论 */
+    fun createLineComment(
+        chapterId: Int,
+        line: Int,
+        content: String,
+        onSuccess: () -> Unit = {}
+    ) {
+        val bookId = uiState.value.book?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val trimmed = content.trim()
+            if (trimmed.isEmpty()) {
+                SnackBarManager.showMessage("评论内容不能为空")
+                return@launch
+            }
+            if (trimmed.length > 2000) {
+                SnackBarManager.showMessage("评论内容不能超过2000字")
+                return@launch
+            }
+            val result = CommentService.createLineComment(bookId, chapterId, line, trimmed)
+            if (result is NetworkResult.Success || result is NetworkResult.Empty) {
+                SnackBarManager.showMessage("评论发表成功")
+                loadChapterComments(chapterId)
+                withContext(Dispatchers.Main) { onSuccess() }
+            } else {
+                SnackBarManager.showMessage((result as? NetworkResult.Failure)?.message ?: "发表失败")
+            }
+        }
+    }
+
+    /** 删除自己的行评论 */
+    fun deleteLineComment(
+        chapterId: Int,
+        comment: BookChapterComment,
+        onSuccess: () -> Unit = {}
+    ) {
+        val bookId = uiState.value.book?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = CommentService.deleteLineComment(bookId, chapterId, comment.id)
+            if (result is NetworkResult.Success || result is NetworkResult.Empty) {
+                SnackBarManager.showMessage("评论已删除")
+                loadChapterComments(chapterId)
+                withContext(Dispatchers.Main) { onSuccess() }
+            } else {
+                SnackBarManager.showMessage((result as? NetworkResult.Failure)?.message ?: "删除失败")
+            }
         }
     }
 
