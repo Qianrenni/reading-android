@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -176,6 +177,7 @@ fun RegisterView(
                 Checkbox(
                     checked = privacyAgreed,
                     onCheckedChange = { privacyAgreed = it },
+                    modifier = Modifier.testTag("consent_checkbox")
                 )
                 Text(
                     text = "我已阅读并同意",
@@ -191,23 +193,19 @@ fun RegisterView(
 
             Button(
                 onClick = {
-                    if (!privacyAgreed) {
-                        scope.launch {
-                            SnackBarManager.showMessage("请先阅读并同意《用户协议》和《隐私政策》")
-                        }
-                    } else {
-                        viewModel.register(
-                            onSuccess = {
-                                scope.launch {
-                                    SnackBarManager.showMessage("注册成功，请登录")
-                                }
-                                navigator.navigate(Login)
+                    viewModel.register(
+                        onSuccess = {
+                            scope.launch {
+                                SnackBarManager.showMessage("注册成功，请登录")
                             }
-                        )
-                    }
+                            navigator.navigate(Login)
+                        }
+                    )
                 },
-                enabled = !registerState.pageStatus.isLoading,
-                modifier = Modifier.width(180.dp)
+                enabled = !registerState.pageStatus.isLoading && privacyAgreed,
+                modifier = Modifier
+                    .width(180.dp)
+                    .testTag("register_button")
             ) {
                 if (registerState.pageStatus.isLoading) {
                     CircularProgressIndicator()

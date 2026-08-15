@@ -22,10 +22,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -40,7 +40,6 @@ import com.qianrenni.reading.navigation.PrivacyPolicy
 import com.qianrenni.reading.navigation.Register
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun LoginView(
@@ -48,7 +47,6 @@ fun LoginView(
     viewModel: LoginViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     var privacyAgreed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.start()
@@ -150,6 +148,7 @@ fun LoginView(
                 Checkbox(
                     checked = privacyAgreed,
                     onCheckedChange = { privacyAgreed = it },
+                    modifier = Modifier.testTag("consent_checkbox")
                 )
                 Text(
                     text = "我已阅读并同意",
@@ -164,17 +163,11 @@ fun LoginView(
             }
 
             Button(
-                onClick = {
-                    if (!privacyAgreed) {
-                        scope.launch {
-                            SnackBarManager.showMessage("请先阅读并同意《用户协议》和《隐私政策》")
-                        }
-                    } else {
-                        viewModel.login()
-                    }
-                },
-                enabled = !loginState.isLoading,
-                modifier = Modifier.width(180.dp)
+                onClick = { viewModel.login() },
+                enabled = !loginState.isLoading && privacyAgreed,
+                modifier = Modifier
+                    .width(180.dp)
+                    .testTag("login_button")
             ) {
                 if (loginState.isLoading) {
                     CircularProgressIndicator()

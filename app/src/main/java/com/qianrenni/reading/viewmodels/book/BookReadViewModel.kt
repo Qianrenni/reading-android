@@ -112,81 +112,62 @@ class BookReadViewModel(
         Log.d(TAG, "refreshPages:  currentPage $currentPage")
         viewModelScope.launch(Dispatchers.Default) {
             val catalog = uiState.value.catalog
-            var updateCurrentIndex = uiState.value.currentIndex
-            currentChapterPageIndex += step
-            var currentChapterId = catalog[updateCurrentIndex].id
-            lockForChapter(currentChapterId)
-            var items = chaptersCache[currentChapterId]!!
-            if (currentChapterPageIndex == -1) {
-                stopHeartbeat()
-                reportChapterRead(catalog[updateCurrentIndex].id, "exit")
-                updateCurrentIndex = (updateCurrentIndex - 1 + catalog.size) % catalog.size
-                currentChapterId = catalog[updateCurrentIndex].id
-                lockForChapter(currentChapterId)
-                currentChapterPageIndex = chaptersCache[currentChapterId]!!.size - 1
-                uiState.value.book?.let {
-                    readingProgressApi.updateReadingProgress(
-                        UpdateProgressRequest(
-                            it.id, currentChapterId
-                        )
-                    )
+            while (true) {
+                when (val outcome = PagingEngine.compute(
+                    catalog = catalog,
+                    pagesByChapter = chaptersCache.snapshot(),
+                    currentIndex = uiState.value.currentIndex,
+                    currentChapterPageIndex = currentChapterPageIndex,
+                    currentPage = currentPage,
+                    pageCount = pageSize,
+                    step = step,
+                )) {
+                    is PagingEngine.Outcome.Ready -> {
+                        applyPagingResult(outcome.result, catalog)
+                        break
+                    }
+                    is PagingEngine.Outcome.NeedsLoading -> {
+                        if (outcome.missingChapterIds.isEmpty()) return@launch
+                        // 预加载缺失章节并阻塞等待其就绪（UI 收集 channel 后经 addPages 写入缓存）
+                        outcome.missingChapterIds.forEach { id ->
+                            loadChapter(id)
+                            lockForChapter(id)
+                        }
+                    }
+                    PagingEngine.Outcome.CannotCompute -> return@launch
                 }
-                reportChapterRead(currentChapterId, "enter")
-                startHeartbeat(currentChapterId)
-            } else if (currentChapterPageIndex == items.size) {
-                stopHeartbeat()
-                reportChapterRead(catalog[updateCurrentIndex].id, "exit")
-                updateCurrentIndex = (updateCurrentIndex + 1 + catalog.size) % catalog.size
-                currentChapterId = catalog[updateCurrentIndex].id
-                lockForChapter(currentChapterId)
-                currentChapterPageIndex = 0
-                uiState.value.book?.let {
-                    readingProgressApi.updateReadingProgress(
-                        UpdateProgressRequest(
-                            it.id, currentChapterId
-                        )
-                    )
-                }
-                reportChapterRead(currentChapterId, "enter")
-                startHeartbeat(currentChapterId)
+            }
+        }
+    }
 
-            }
-            catalogIndexToLoad(updateCurrentIndex)
-            items = chaptersCache[currentChapterId]!!
-            var targetIndex = currentChapterPageIndex
-            if (items.size - currentChapterPageIndex <= 1) {
-                val rightChapterId = catalog[(updateCurrentIndex + 1) % catalog.size].id
-                lockForChapter(rightChapterId)
-                items = items + chaptersCache[rightChapterId]!!
-            }
-            if (currentChapterPageIndex < 1) {
-                val leftChapterId =
-                    catalog[(updateCurrentIndex - 1 + catalog.size) % catalog.size].id
-                lockForChapter(leftChapterId)
-                items = chaptersCache[leftChapterId]!! + items
-                targetIndex += chaptersCache[leftChapterId]!!.size
-            }
-            val updateItems =
-                listOf(targetIndex, targetIndex - 1, targetIndex + 1).map { items[it] }
-            val pagesOrder = listOf(
-                currentPage,
-                (currentPage - 1 + pageSize) % pageSize,
-                (currentPage + 1) % pageSize
-            )
-            _uiState.update { state ->
-                state.copy(
-                    pages = pagesOrder.zip(updateItems).sortedBy { it.first }
-                        .map { it.second },
-                    currentIndex = updateCurrentIndex,
-                    pageStatus = state.pageStatus.down(),
-                    currentPageIndex = currentPage
+    /** 应用分页结果：处理跨章副作用（上报/进度/心跳）并更新 UI 状态。 */
+    private suspend fun applyPagingResult(result: PagingResult, catalog: List<Catalog>) {
+        if (result.crossedChapter) {
+            stopHeartbeat()
+            result.previousChapterId?.let { reportChapterRead(it, "exit") }
+            uiState.value.book?.let {
+                readingProgressApi.updateReadingProgress(
+                    UpdateProgressRequest(
+                        it.id, result.newChapterId
+                    )
                 )
             }
-            // 切换章节后加载该章行评论
-            loadChapterComments(catalog[updateCurrentIndex].id)
-            Log.d(TAG, "refreshPages: ${uiState.value.pages}")
+            reportChapterRead(result.newChapterId, "enter")
+            startHeartbeat(result.newChapterId)
         }
-
+        catalogIndexToLoad(result.currentIndex)
+        currentChapterPageIndex = result.currentChapterPageIndex
+        _uiState.update { state ->
+            state.copy(
+                pages = result.pages,
+                currentIndex = result.currentIndex,
+                pageStatus = state.pageStatus.down(),
+                currentPageIndex = result.currentPageIndex
+            )
+        }
+        // 切换章节后加载该章行评论
+        loadChapterComments(catalog[result.currentIndex].id)
+        Log.d(TAG, "refreshPages: ${uiState.value.pages}")
     }
 
     fun addPages(chapterId: Int, indents: List<Boolean>, contents: List<List<String>>, startLines: List<Int>) {
