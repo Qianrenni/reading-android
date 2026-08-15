@@ -1,7 +1,6 @@
 package com.qianrenni.reading.views.book
 
 import android.app.Activity
-import android.content.Context
 import android.util.Log
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -85,8 +84,7 @@ import com.qianrenni.reading.components.CommonPage
 import com.qianrenni.reading.components.InfiniteHorizontalPager
 import com.qianrenni.reading.components.ReadingSettings
 import com.qianrenni.reading.data.model.ReadSettings
-import com.qianrenni.reading.data.store.AuthStore
-import com.qianrenni.reading.data.store.SettingsRepository
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.util.SystemBarUtils
 import com.qianrenni.reading.viewmodels.book.BookReadViewModel
@@ -195,11 +193,10 @@ suspend fun measureText(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReadView(
-    context: Context,
     navigator: Navigator,
     bookId: Int,
     chapterId: Int,
-    viewModel: BookReadViewModel = viewModel()
+    viewModel: BookReadViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
 
     val activity = LocalActivity.current as Activity
@@ -223,8 +220,7 @@ fun BookReadView(
     var selectedLineText by remember { mutableStateOf("") }
     var commentInput by remember { mutableStateOf("") }
     val colorScheme = MaterialTheme.colorScheme
-    val settingsRepository =
-        remember { SettingsRepository(context, colorScheme) }
+    val settingsRepository = appContainer().settingsRepository
     var readSettings by remember {
         mutableStateOf(
             ReadSettings(
@@ -236,7 +232,7 @@ fun BookReadView(
 
     // 收集阅读设置
     LaunchedEffect(Unit) {
-        settingsRepository.readSettings.collectLatest { settings ->
+        settingsRepository.readSettings(colorScheme).collectLatest { settings ->
             Log.d(TAG, "BookReadView:  $settings")
             readSettings = settings
         }
@@ -471,7 +467,7 @@ fun BookReadView(
     selectedCommentLine?.let { line ->
         val chapterId = uiState.catalog.getOrNull(uiState.currentIndex)?.id ?: 0
         val comments = uiState.chapterComments[line].orEmpty()
-        val currentUserId = AuthStore.user.value?.id
+        val currentUserId = appContainer().authRepository.user.value?.id
         ModalBottomSheet(
             onDismissRequest = { selectedCommentLine = null }
         ) {

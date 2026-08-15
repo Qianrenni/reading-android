@@ -1,6 +1,5 @@
 package com.qianrenni.reading
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
@@ -18,6 +17,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.qianrenni.reading.components.BottomNavigationBar
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.NavDecision
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.state.rememberNavigationState
@@ -39,7 +39,7 @@ import io.ktor.util.reflect.instanceOf
 private const val TAG = "AppNavigation"
 
 @Composable
-fun AppNavigation(context: Context, authViewModel: AuthViewModel = viewModel()) {
+fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory)) {
     val snackBarHostState = remember { SnackbarHostState() }
     val isLogin by authViewModel.isLogin.collectAsStateWithLifecycle()
     // 1. 创建状态（内部持有多个 backStacks）
@@ -96,7 +96,6 @@ fun AppNavigation(context: Context, authViewModel: AuthViewModel = viewModel()) 
         entry<Bookshelf> { BookShelfView(navigator = navigator) }
         entry<BookRead> { key ->
             BookReadView(
-                context = context,
                 bookId = key.bookId,
                 chapterId = key.chapterId,
                 navigator = navigator

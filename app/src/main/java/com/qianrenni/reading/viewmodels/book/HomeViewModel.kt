@@ -3,8 +3,9 @@ package com.qianrenni.reading.viewmodels.book
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qianrenni.reading.data.api.BookService
 import com.qianrenni.reading.data.model.Book
+import com.qianrenni.reading.data.remote.BookApi
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -14,7 +15,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val bookApi: BookApi,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
 
     data class UiState(
         val categories: List<String> = emptyList(),
@@ -56,12 +60,12 @@ class HomeViewModel : ViewModel() {
             return
         }
 
-        searchJob = viewModelScope.launch(Dispatchers.IO) {
+        searchJob = viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(isSearching = true) }
             delay(300) // 防抖 300ms
             Log.d("HomeVM", "Searching books with query: $query")
 
-            val result = BookService.searchBooks(query)
+            val result = bookApi.searchBooks(query)
             result.onSuccess { books ->
                 _uiState.update {
                     it.copy(
@@ -123,9 +127,9 @@ class HomeViewModel : ViewModel() {
     }
 
     private fun loadCategories() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(isLoading = true, isError = false) }
-            val result = BookService.getCategories()
+            val result = bookApi.getCategories()
             result.onSuccess { categories ->
                 val sorted = categories.sortedBy { it.length }
                 _uiState.update {
@@ -136,7 +140,9 @@ class HomeViewModel : ViewModel() {
                         isError = false
                     )
                 }
-                selectCategory(sorted.first())
+                if (sorted.isNotEmpty()) {
+                    selectCategory(sorted.first())
+                }
             }
             result.onFailure { message, _, _ ->
                 _uiState.update {
@@ -152,10 +158,10 @@ class HomeViewModel : ViewModel() {
     }
 
     private fun loadBooksByCategory(category: String, offset: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(isLoading = true, isError = false) }
 
-            val result = BookService.getBooksByCategory(category, offset, LIMIT)
+            val result = bookApi.getBooksByCategory(category, offset, LIMIT)
             result.onSuccess { books ->
                 if (books.isNotEmpty()) {
                     val cache = categoryBooksCache.getOrPut(category) { mutableListOf() }

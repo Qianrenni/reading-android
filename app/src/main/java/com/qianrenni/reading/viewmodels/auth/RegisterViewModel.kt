@@ -5,10 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
-import com.qianrenni.reading.data.api.AuthService
 import com.qianrenni.reading.data.model.EmailVerifyRequest
 import com.qianrenni.reading.data.model.RegisterRequest
 import com.qianrenni.reading.data.model.UserRegister
+import com.qianrenni.reading.data.remote.AuthApi
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,10 @@ data class RegisterState(
     override val pageStatus: CommonPageStatus = CommonPageStatus(),
 ) : CommonUiState
 
-class RegisterViewModel : ViewModel() {
+class RegisterViewModel(
+    private val authApi: AuthApi,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
     private val _registerState = MutableStateFlow(RegisterState())
     val registerState = _registerState.asStateFlow()
 
@@ -65,8 +69,8 @@ class RegisterViewModel : ViewModel() {
 
         _registerState.update { it.copy(isVerifyingEmail = true) }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = AuthService.verifyEmail(EmailVerifyRequest(email = email))
+        viewModelScope.launch(ioDispatcher) {
+            val result = authApi.verifyEmail(EmailVerifyRequest(email = email))
             _registerState.update { it.copy(isVerifyingEmail = false) }
 
             result.onEmpty {
@@ -99,8 +103,8 @@ class RegisterViewModel : ViewModel() {
 
         _registerState.update { it.copy(pageStatus = it.pageStatus.loading()) }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = AuthService.register(
+        viewModelScope.launch(ioDispatcher) {
+            val result = authApi.register(
                 request = RegisterRequest(
                     user = UserRegister(
                         userName = state.username,

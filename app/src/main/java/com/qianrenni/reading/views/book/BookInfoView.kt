@@ -49,10 +49,10 @@ import com.qianrenni.reading.BookInfo
 import com.qianrenni.reading.BookRead
 import com.qianrenni.reading.components.BookItem
 import com.qianrenni.reading.components.CommonPage
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.BookComment
 import com.qianrenni.reading.data.model.Catalog
-import com.qianrenni.reading.data.store.AuthStore
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.viewmodels.book.BookInfoViewModel
 
@@ -60,7 +60,7 @@ import com.qianrenni.reading.viewmodels.book.BookInfoViewModel
 fun BookInfoView(
     navigator: Navigator,
     bookId: Int,
-    viewModel: BookInfoViewModel = viewModel()
+    viewModel: BookInfoViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -74,7 +74,7 @@ fun BookInfoView(
     var reviewText by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<BookComment?>(null) }
-    val currentUserId = AuthStore.user.value?.id
+    val currentUserId = appContainer().authRepository.user.value?.id
 
     CommonPage(
         uiState = uiState,

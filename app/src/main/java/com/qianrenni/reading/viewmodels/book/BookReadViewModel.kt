@@ -1,24 +1,24 @@
 package com.qianrenni.reading.viewmodels.book
 
-import android.app.Application
 import android.util.Log
 import androidx.collection.LruCache
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
-import com.qianrenni.reading.data.api.BookService
-import com.qianrenni.reading.data.api.CommentService
-import com.qianrenni.reading.data.api.NetworkResult
-import com.qianrenni.reading.data.api.ReadingProgressService
-import com.qianrenni.reading.data.api.ReportService
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.BookChapterComment
 import com.qianrenni.reading.data.model.Catalog
 import com.qianrenni.reading.data.model.ReadEvent
 import com.qianrenni.reading.data.model.UpdateProgressRequest
+import com.qianrenni.reading.data.remote.BookApi
+import com.qianrenni.reading.data.remote.CommentApi
+import com.qianrenni.reading.data.remote.NetworkResult
+import com.qianrenni.reading.data.remote.ReadingProgressApi
+import com.qianrenni.reading.data.remote.ReportApi
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.util.indexToCN
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -60,8 +60,12 @@ data class BookReadUiState(
 private const val TAG = "BookReadViewModel"
 
 class BookReadViewModel(
-    application: Application,
-) : AndroidViewModel(application) {
+    private val bookApi: BookApi,
+    private val commentApi: CommentApi,
+    private val readingProgressApi: ReadingProgressApi,
+    private val reportApi: ReportApi,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookReadUiState())
     val uiState: StateFlow<BookReadUiState> = _uiState.asStateFlow()
@@ -120,7 +124,7 @@ class BookReadViewModel(
                 lockForChapter(currentChapterId)
                 currentChapterPageIndex = chaptersCache[currentChapterId]!!.size - 1
                 uiState.value.book?.let {
-                    ReadingProgressService.updateReadingProgress(
+                    readingProgressApi.updateReadingProgress(
                         UpdateProgressRequest(
                             it.id, currentChapterId
                         )
@@ -136,7 +140,7 @@ class BookReadViewModel(
                 lockForChapter(currentChapterId)
                 currentChapterPageIndex = 0
                 uiState.value.book?.let {
-                    ReadingProgressService.updateReadingProgress(
+                    readingProgressApi.updateReadingProgress(
                         UpdateProgressRequest(
                             it.id, currentChapterId
                         )
@@ -212,9 +216,9 @@ class BookReadViewModel(
         }
         _uiState.update { it.copy(pageStatus = it.pageStatus.loading()) }
         clear()
-        viewModelScope.launch(Dispatchers.IO) {
-            val bookJob = async { BookService.getBookById(bookId) }
-            val catalogJob = async { BookService.getCatalog(bookId) }
+        viewModelScope.launch(ioDispatcher) {
+            val bookJob = async { bookApi.getBookById(bookId) }
+            val catalogJob = async { bookApi.getCatalog(bookId) }
             val bookResult = bookJob.await()
             val catalogResult = catalogJob.await()
             bookResult.onSuccess { data ->
@@ -242,7 +246,7 @@ class BookReadViewModel(
                         )
                     }
                     catalogIndexToLoad(uiState.value.currentIndex)
-                    ReadingProgressService.updateReadingProgress(
+                    readingProgressApi.updateReadingProgress(
                         UpdateProgressRequest(
                             bookId, chapterIdToLoad
                         )
@@ -264,9 +268,9 @@ class BookReadViewModel(
             return
         }
         val bookId = _uiState.value.book?.id ?: return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             // 获取章节内容
-            val result = BookService.getChapter(chapterId, bookId)
+            val result = bookApi.getChapter(chapterId, bookId)
             result.onSuccess { data ->
                 bookChapterChannel.send(
                     BookChapter(
@@ -294,8 +298,8 @@ class BookReadViewModel(
         loadChapter(catalog[updateCurrentIndex].id)
         _uiState.update { it.copy(currentIndex = updateCurrentIndex) }
         currentChapterPageIndex = 0
-        viewModelScope.launch(Dispatchers.IO) {
-            ReadingProgressService.updateReadingProgress(
+        viewModelScope.launch(ioDispatcher) {
+            readingProgressApi.updateReadingProgress(
                 UpdateProgressRequest(
                     bookId = uiState.value.book?.id ?: -1,
                     lastChapterId = catalog[updateCurrentIndex].id
@@ -310,8 +314,8 @@ class BookReadViewModel(
         loadChapter(chapterId)
         _uiState.update { it.copy(currentIndex = targetIndex) }
         currentChapterPageIndex = 0
-        viewModelScope.launch(Dispatchers.IO) {
-            ReadingProgressService.updateReadingProgress(
+        viewModelScope.launch(ioDispatcher) {
+            readingProgressApi.updateReadingProgress(
                 UpdateProgressRequest(
                     bookId = uiState.value.book?.id ?: -1,
                     lastChapterId = chapterId
@@ -356,8 +360,8 @@ class BookReadViewModel(
     /** 加载某章行评论（仅当该章为当前章时生效） */
     fun loadChapterComments(chapterId: Int) {
         val bookId = uiState.value.book?.id ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = CommentService.getChapterComments(bookId, chapterId)
+        viewModelScope.launch(ioDispatcher) {
+            val result = commentApi.getChapterComments(bookId, chapterId)
             result.onSuccess { map ->
                 _uiState.update {
                     if (it.currentIndex >= 0 &&
@@ -380,7 +384,7 @@ class BookReadViewModel(
         onSuccess: () -> Unit = {}
     ) {
         val bookId = uiState.value.book?.id ?: return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val trimmed = content.trim()
             if (trimmed.isEmpty()) {
                 SnackBarManager.showMessage("评论内容不能为空")
@@ -390,7 +394,7 @@ class BookReadViewModel(
                 SnackBarManager.showMessage("评论内容不能超过2000字")
                 return@launch
             }
-            val result = CommentService.createLineComment(bookId, chapterId, line, trimmed)
+            val result = commentApi.createLineComment(bookId, chapterId, line, trimmed)
             if (result is NetworkResult.Success || result is NetworkResult.Empty) {
                 SnackBarManager.showMessage("评论发表成功")
                 loadChapterComments(chapterId)
@@ -408,8 +412,8 @@ class BookReadViewModel(
         onSuccess: () -> Unit = {}
     ) {
         val bookId = uiState.value.book?.id ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = CommentService.deleteLineComment(bookId, chapterId, comment.id)
+        viewModelScope.launch(ioDispatcher) {
+            val result = commentApi.deleteLineComment(bookId, chapterId, comment.id)
             if (result is NetworkResult.Success || result is NetworkResult.Empty) {
                 SnackBarManager.showMessage("评论已删除")
                 loadChapterComments(chapterId)
@@ -433,9 +437,9 @@ class BookReadViewModel(
 
 
     private fun reportChapterRead(chapterId: Int, eventType: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             uiState.value.book?.let { book ->
-                ReportService.reportChapterRead(
+                reportApi.reportChapterRead(
                     ReadEvent(
                         bookId = book.id, chapterId = chapterId, eventType = eventType
                     )
@@ -446,7 +450,7 @@ class BookReadViewModel(
 
     private fun startHeartbeat(chapterId: Int) {
         stopHeartbeat()
-        heartbeatJob = viewModelScope.launch(Dispatchers.IO) {
+        heartbeatJob = viewModelScope.launch(ioDispatcher) {
             while (true) {
                 delay(10000) // 每10秒上报一次
                 reportChapterRead(chapterId, "heartbeat")

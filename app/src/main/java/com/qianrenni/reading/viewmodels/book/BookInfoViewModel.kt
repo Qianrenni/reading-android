@@ -5,14 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
-import com.qianrenni.reading.data.api.BookService
-import com.qianrenni.reading.data.api.CommentService
-import com.qianrenni.reading.data.api.NetworkResult
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.BookComment
 import com.qianrenni.reading.data.model.Catalog
+import com.qianrenni.reading.data.remote.BookApi
+import com.qianrenni.reading.data.remote.CommentApi
+import com.qianrenni.reading.data.remote.NetworkResult
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.util.indexToCN
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,19 +37,23 @@ data class UiState(
     override val pageStatus: CommonPageStatus = CommonPageStatus()
 ) : CommonUiState
 
-class BookInfoViewModel : ViewModel() {
+class BookInfoViewModel(
+    private val bookApi: BookApi,
+    private val commentApi: CommentApi,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
 
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
     fun loadBookInfo(bookId: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(pageStatus = it.pageStatus.loading()) }
 
             // 并行加载书籍信息和目录
-            val bookJob = async { BookService.getBookById(bookId) }
-            val catalogJob = async { BookService.getCatalog(bookId) }
+            val bookJob = async { bookApi.getBookById(bookId) }
+            val catalogJob = async { bookApi.getCatalog(bookId) }
             val bookResult = bookJob.await()
             val catalogResult = catalogJob.await()
             bookResult.onSuccess { book ->
@@ -88,10 +93,10 @@ class BookInfoViewModel : ViewModel() {
     }
 
     private fun loadRecommendations(tags: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             if (tags.isEmpty()) return@launch
 
-            val result = BookService.getRecommendations(tags)
+            val result = bookApi.getRecommendations(tags)
             result.onSuccess { books ->
                 val currentBookId = _uiState.value.book?.id
                 val filtered = books.filter { it.id != currentBookId }.toList()
@@ -113,10 +118,10 @@ class BookInfoViewModel : ViewModel() {
 
     /** 分页加载书评列表 */
     fun loadReviews(bookId: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val state = _uiState.value
             _uiState.update { it.copy(reviewsLoading = true) }
-            val result = CommentService.getBookReviews(bookId, state.reviewPage, state.reviewSize)
+            val result = commentApi.getBookReviews(bookId, state.reviewPage, state.reviewSize)
             result.onSuccess { page ->
                 _uiState.update {
                     it.copy(
@@ -135,8 +140,8 @@ class BookInfoViewModel : ViewModel() {
 
     /** 加载自己的书评（无则置 null） */
     fun loadMyReview(bookId: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = CommentService.getMyBookReview(bookId)
+        viewModelScope.launch(ioDispatcher) {
+            val result = commentApi.getMyBookReview(bookId)
             when (result) {
                 is NetworkResult.Success -> _uiState.update { it.copy(myReview = result.data) }
                 is NetworkResult.Empty -> _uiState.update { it.copy(myReview = null) }
@@ -155,7 +160,7 @@ class BookInfoViewModel : ViewModel() {
 
     /** 发布/编辑自己的书评 */
     fun createReview(bookId: Int, content: String, onSuccess: () -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val trimmed = content.trim()
             if (trimmed.isEmpty()) {
                 SnackBarManager.showMessage("评论内容不能为空")
@@ -165,7 +170,7 @@ class BookInfoViewModel : ViewModel() {
                 SnackBarManager.showMessage("评论内容不能超过300字")
                 return@launch
             }
-            val result = CommentService.createBookReview(bookId, trimmed)
+            val result = commentApi.createBookReview(bookId, trimmed)
             if (result is NetworkResult.Success || result is NetworkResult.Empty) {
                 SnackBarManager.showMessage("书评发布成功")
                 loadReviews(bookId)
@@ -179,8 +184,8 @@ class BookInfoViewModel : ViewModel() {
 
     /** 删除自己的书评 */
     fun deleteReview(bookId: Int, onSuccess: () -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = CommentService.deleteBookReview(bookId)
+        viewModelScope.launch(ioDispatcher) {
+            val result = commentApi.deleteBookReview(bookId)
             if (result is NetworkResult.Success || result is NetworkResult.Empty) {
                 SnackBarManager.showMessage("书评已删除")
                 loadReviews(bookId)

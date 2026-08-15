@@ -31,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qianrenni.reading.ForgetPassword
 import com.qianrenni.reading.Register
 import com.qianrenni.reading.components.CaptchaImage
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
@@ -38,7 +39,7 @@ import com.qianrenni.reading.viewmodels.auth.LoginViewModel
 @Composable
 fun LoginView(
     navigator: Navigator,
-    viewModel: LoginViewModel = viewModel()
+    viewModel: LoginViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {

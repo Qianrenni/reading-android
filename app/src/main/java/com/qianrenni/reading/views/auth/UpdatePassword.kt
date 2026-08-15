@@ -25,6 +25,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.UpdatePasswordViewModel
@@ -32,7 +33,7 @@ import com.qianrenni.reading.viewmodels.auth.UpdatePasswordViewModel
 @Composable
 fun UpdatePasswordView(
     navigator: Navigator,
-    viewModel: UpdatePasswordViewModel = viewModel()
+    viewModel: UpdatePasswordViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val updatePasswordState by viewModel.updatePasswordState.collectAsStateWithLifecycle()
     LaunchedEffect(updatePasswordState.pageStatus.errorMessage) {

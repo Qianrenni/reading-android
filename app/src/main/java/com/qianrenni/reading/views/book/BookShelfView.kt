@@ -37,6 +37,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.qianrenni.reading.BookRead
 import com.qianrenni.reading.R
 import com.qianrenni.reading.components.CommonPage
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.ShelfItem
 import com.qianrenni.reading.state.Navigator
@@ -45,7 +46,7 @@ import com.qianrenni.reading.viewmodels.book.ShelfViewModel
 @Composable
 fun BookShelfView(
     navigator: Navigator,
-    viewModel: ShelfViewModel = viewModel()
+    viewModel: ShelfViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {

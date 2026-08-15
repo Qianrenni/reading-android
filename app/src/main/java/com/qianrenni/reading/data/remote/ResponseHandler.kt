@@ -1,8 +1,7 @@
-package com.qianrenni.reading.data.api
+package com.qianrenni.reading.data.remote
 
 import android.util.Log
 import com.qianrenni.reading.data.model.ApiResponse
-import com.qianrenni.reading.data.store.AuthStore
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -10,53 +9,10 @@ import io.ktor.client.statement.request
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
-sealed class NetworkResult<out T> {
-    data class Success<T>(val data: T) : NetworkResult<T>()
-    data class Empty(val code: Int = 204) : NetworkResult<Nothing>()
-    data class Failure(
-        val message: String,
-        val code: Int? = null,
-        val exception: Throwable? = null
-    ) : NetworkResult<Nothing>()
-
-    // 函数式风格处理
-    suspend fun fold(
-        onSuccess: suspend (T) -> Unit = {},
-        onFailure: suspend (String, Int?, Throwable?) -> Unit = { _, _, _ -> },
-        onEmpty: suspend () -> Unit = {}
-    ): NetworkResult<T> {
-        when (this) {
-            is Success -> onSuccess(data)
-            is Failure -> onFailure(message, code, exception)
-            is Empty -> onEmpty()
-        }
-        return this
-    }
-
-    suspend fun <R> onSuccess(block: suspend (T) -> R): R? {
-        return when (this) {
-            is Success -> block(data)
-            else -> null
-        }
-    }
-
-    suspend fun <R> onFailure(block: suspend (String, Int?, Throwable?) -> R): R? {
-        return when (this) {
-            is Failure -> block(message, code, exception)
-            else -> null
-        }
-    }
-
-    suspend fun <R> onEmpty(block: suspend () -> R): R? {
-        return when (this) {
-            is Empty -> block()
-            else -> null
-        }
-    }
-}
-
 /**
- * 统一的网络响应处理器，responseHandler设计
+ * 统一的网络响应处理器（纯函数，无外部状态，便于单元测试）。
+ *
+ * @param onUnauthorized 收到 401 时回调（由上层负责清理会话），默认空实现。
  */
 object ResponseHandler {
 
@@ -64,9 +20,12 @@ object ResponseHandler {
     const val FAILURE_CODE = 1
 
     /**
-     * 处理HTTP响应，返回标准化的结果
+     * 处理 HTTP 响应，返回标准化的结果。
      */
-    suspend inline fun <reified T> handleResponse(response: HttpResponse): NetworkResult<T> {
+    suspend inline fun <reified T> handleResponse(
+        response: HttpResponse,
+        onUnauthorized: () -> Unit = {}
+    ): NetworkResult<T> {
         val statusCode = response.status.value
         val contentType = response.contentType()
 
@@ -84,7 +43,7 @@ object ResponseHandler {
             return NetworkResult.Empty(statusCode)
         }
         if (statusCode == 401) {
-            AuthStore.setUser(null)
+            onUnauthorized()
             return NetworkResult.Failure("身份信息失效", statusCode)
         }
         return if (contentType?.match(ContentType.Application.Json) == true) {
@@ -120,7 +79,7 @@ object ResponseHandler {
     }
 
     /**
-     * 判断HTTP状态码是否表示成功
+     * 判断 HTTP 状态码是否表示成功。
      */
     fun isHttpSuccess(statusCode: Int): Boolean {
         return statusCode in 200..299

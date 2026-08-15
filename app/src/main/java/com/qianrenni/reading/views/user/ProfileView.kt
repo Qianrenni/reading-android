@@ -20,13 +20,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.qianrenni.reading.Login
 import com.qianrenni.reading.UpdatePassword
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 
 @Composable
 fun ProfileView(
     navigator: Navigator,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val user by authViewModel.getUser().collectAsStateWithLifecycle()
 

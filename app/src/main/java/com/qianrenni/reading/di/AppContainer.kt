@@ -1,0 +1,95 @@
+package com.qianrenni.reading.di
+
+import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.qianrenni.reading.ReadingApplication
+import com.qianrenni.reading.data.remote.ApiClient
+import com.qianrenni.reading.data.remote.AuthApi
+import com.qianrenni.reading.data.remote.AuthApiImpl
+import com.qianrenni.reading.data.remote.BookApi
+import com.qianrenni.reading.data.remote.BookApiImpl
+import com.qianrenni.reading.data.remote.CommentApi
+import com.qianrenni.reading.data.remote.CommentApiImpl
+import com.qianrenni.reading.data.remote.HttpClientFactory
+import com.qianrenni.reading.data.remote.ReadingProgressApi
+import com.qianrenni.reading.data.remote.ReadingProgressApiImpl
+import com.qianrenni.reading.data.remote.ReportApi
+import com.qianrenni.reading.data.remote.ReportApiImpl
+import com.qianrenni.reading.data.remote.ShelfApi
+import com.qianrenni.reading.data.remote.ShelfApiImpl
+import com.qianrenni.reading.data.remote.UserApi
+import com.qianrenni.reading.data.remote.UserApiImpl
+import com.qianrenni.reading.data.repository.AuthRepository
+import com.qianrenni.reading.data.repository.AuthRepositoryImpl
+import com.qianrenni.reading.data.repository.SessionManager
+import com.qianrenni.reading.data.repository.SettingsRepository
+import com.qianrenni.reading.data.repository.SettingsRepositoryImpl
+import com.qianrenni.reading.viewmodels.auth.AuthViewModel
+import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
+import com.qianrenni.reading.viewmodels.auth.LoginViewModel
+import com.qianrenni.reading.viewmodels.auth.RegisterViewModel
+import com.qianrenni.reading.viewmodels.auth.UpdatePasswordViewModel
+import com.qianrenni.reading.viewmodels.book.BookInfoViewModel
+import com.qianrenni.reading.viewmodels.book.BookReadViewModel
+import com.qianrenni.reading.viewmodels.book.HistoryViewModel
+import com.qianrenni.reading.viewmodels.book.HomeViewModel
+import com.qianrenni.reading.viewmodels.book.ShelfViewModel
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+
+/**
+ * 手动依赖注入容器（零第三方依赖）：
+ * 持有全部单例依赖，并为 ViewModel 提供统一工厂。
+ */
+class AppContainer(private val context: Context) {
+
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    // ---- 会话 / 网络 ----
+    val sessionManager: SessionManager = SessionManager(context)
+
+    private val apiClient: ApiClient = ApiClient(
+        client = HttpClientFactory.create(),
+        tokenProvider = { sessionManager.authHeaderValue() },
+        onUnauthorized = { sessionManager.clear() }
+    )
+
+    // ---- API（接口注入，便于测试替换为 Fake）----
+    val authApi: AuthApi = AuthApiImpl(apiClient)
+    val bookApi: BookApi = BookApiImpl(apiClient)
+    val commentApi: CommentApi = CommentApiImpl(apiClient)
+    val readingProgressApi: ReadingProgressApi = ReadingProgressApiImpl(apiClient)
+    val reportApi: ReportApi = ReportApiImpl(apiClient)
+    val shelfApi: ShelfApi = ShelfApiImpl(apiClient)
+    val userApi: UserApi = UserApiImpl(apiClient)
+
+    // ---- Repository ----
+    val authRepository: AuthRepository = AuthRepositoryImpl(sessionManager, authApi)
+    val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context)
+
+    // ---- ViewModel 工厂（手动 DI）----
+    val viewModelFactory = viewModelFactory {
+        initializer { AuthViewModel(authRepository) }
+        initializer { LoginViewModel(authApi, authRepository, ioDispatcher) }
+        initializer { RegisterViewModel(authApi, ioDispatcher) }
+        initializer { ForgetPasswordViewModel(userApi, ioDispatcher) }
+        initializer { UpdatePasswordViewModel(userApi, authRepository, ioDispatcher) }
+        initializer { HomeViewModel(bookApi, ioDispatcher) }
+        initializer { BookInfoViewModel(bookApi, commentApi, ioDispatcher) }
+        initializer { HistoryViewModel(bookApi, readingProgressApi, shelfApi, ioDispatcher) }
+        initializer { ShelfViewModel(bookApi, readingProgressApi, shelfApi, ioDispatcher) }
+        initializer { BookReadViewModel(bookApi, commentApi, readingProgressApi, reportApi, ioDispatcher) }
+    }
+}
+
+/**
+ * 在 Compose 中获取全局容器。
+ */
+@Composable
+fun appContainer(): AppContainer {
+    val context = LocalContext.current
+    return (context.applicationContext as ReadingApplication).container
+}

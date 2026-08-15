@@ -15,7 +15,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import com.qianrenni.reading.R
-import com.qianrenni.reading.data.api.AuthService
+import com.qianrenni.reading.di.appContainer
 import kotlinx.coroutines.launch
 
 
@@ -25,9 +25,10 @@ fun CaptchaImage(
 ) {
     val captchaBytes = remember { mutableStateOf<ByteArray?>(null) }
     val scope = rememberCoroutineScope()
+    val authApi = appContainer().authApi
     val refreshCaptcha = {
         scope.launch {
-            AuthService.getCaptcha().onSuccess {
+            authApi.getCaptcha().onSuccess {
                 captchaBytes.value = it
             }
         }

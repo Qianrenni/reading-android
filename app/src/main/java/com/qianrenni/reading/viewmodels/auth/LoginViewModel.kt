@@ -2,9 +2,10 @@ package com.qianrenni.reading.viewmodels.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qianrenni.reading.data.api.AuthService
 import com.qianrenni.reading.data.model.LoginRequest
-import com.qianrenni.reading.data.store.AuthStore
+import com.qianrenni.reading.data.remote.AuthApi
+import com.qianrenni.reading.data.repository.AuthRepository
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,12 +21,16 @@ data class LoginState(
     val error: String? = null
 )
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(
+    private val authApi: AuthApi,
+    private val authRepository: AuthRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
     private val _loginState = MutableStateFlow(LoginState())
     val loginState = _loginState.asStateFlow()
     fun start() {
-        viewModelScope.launch(Dispatchers.IO) {
-            AuthStore.initial()
+        viewModelScope.launch(ioDispatcher) {
+            authRepository.initial()
         }
     }
 
@@ -55,17 +60,18 @@ class LoginViewModel : ViewModel() {
             return
         }
         _loginState.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = AuthService.login(
+        viewModelScope.launch(ioDispatcher) {
+            val result = authApi.login(
                 LoginRequest(
                     username = username,
                     password = password,
                     captcha = captcha
-                )
+                ),
+                captchaId = null
             )
             result.onSuccess { res ->
-                AuthStore.setUser(res.user)
-                AuthStore.setToken(
+                authRepository.setUser(res.user)
+                authRepository.setToken(
                     res.accessToken,
                     res.refreshToken,
                     res.tokenType,

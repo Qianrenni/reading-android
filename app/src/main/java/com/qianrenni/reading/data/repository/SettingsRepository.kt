@@ -1,5 +1,4 @@
-package com.qianrenni.reading.data.store
-
+package com.qianrenni.reading.data.repository
 
 import android.content.Context
 import androidx.compose.material3.ColorScheme
@@ -19,7 +18,16 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "read_settings")
 
-class SettingsRepository(private val context: Context, private val colorScheme: ColorScheme) {
+/**
+ * 阅读设置仓库（DataStore 持久化）。
+ */
+interface SettingsRepository {
+    fun readSettings(colorScheme: ColorScheme): Flow<ReadSettings>
+    suspend fun updateSettings(settings: ReadSettings)
+}
+
+class SettingsRepositoryImpl(private val context: Context) : SettingsRepository {
+
     private object PreferencesKeys {
         val FONT_SIZE = floatPreferencesKey("font_size")
         val LINE_HEIGHT = floatPreferencesKey("line_height")
@@ -29,21 +37,23 @@ class SettingsRepository(private val context: Context, private val colorScheme: 
         val BACKGROUND_COLOR = intPreferencesKey("background_color")
     }
 
-    val readSettings: Flow<ReadSettings> = context.dataStore.data.map { preferences ->
-        ReadSettings(
-            fontSize = preferences[PreferencesKeys.FONT_SIZE] ?: 18f,
-            lineHeight = preferences[PreferencesKeys.LINE_HEIGHT] ?: 40f,
-            letterSpacing = preferences[PreferencesKeys.LETTER_SPACING] ?: 2f,
-            fontFamily = ReadFontFamily.entries.find { it.displayName == preferences[PreferencesKeys.FONT_FAMILY] }?.value
-                ?: FontFamily.Default,
-            textColor = preferences[PreferencesKeys.TEXT_COLOR]
-                ?: colorScheme.onBackground.toArgb(),
-            backgroundColor = preferences[PreferencesKeys.BACKGROUND_COLOR]
-                ?: colorScheme.background.toArgb()
-        )
+    override fun readSettings(colorScheme: ColorScheme): Flow<ReadSettings> {
+        return context.dataStore.data.map { preferences ->
+            ReadSettings(
+                fontSize = preferences[PreferencesKeys.FONT_SIZE] ?: 18f,
+                lineHeight = preferences[PreferencesKeys.LINE_HEIGHT] ?: 40f,
+                letterSpacing = preferences[PreferencesKeys.LETTER_SPACING] ?: 2f,
+                fontFamily = ReadFontFamily.entries.find { it.displayName == preferences[PreferencesKeys.FONT_FAMILY] }?.value
+                    ?: FontFamily.Default,
+                textColor = preferences[PreferencesKeys.TEXT_COLOR]
+                    ?: colorScheme.onBackground.toArgb(),
+                backgroundColor = preferences[PreferencesKeys.BACKGROUND_COLOR]
+                    ?: colorScheme.background.toArgb()
+            )
+        }
     }
 
-    suspend fun updateSettings(settings: ReadSettings) {
+    override suspend fun updateSettings(settings: ReadSettings) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.FONT_SIZE] = settings.fontSize
             preferences[PreferencesKeys.LINE_HEIGHT] = settings.lineHeight

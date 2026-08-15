@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qianrenni.reading.Login
 import com.qianrenni.reading.components.CaptchaImage
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.RegisterViewModel
@@ -38,7 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun RegisterView(
     navigator: Navigator,
-    viewModel: RegisterViewModel = viewModel()
+    viewModel: RegisterViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val registerState by viewModel.registerState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()

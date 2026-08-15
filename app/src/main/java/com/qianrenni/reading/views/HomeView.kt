@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qianrenni.reading.BookInfo
 import com.qianrenni.reading.components.BookItem
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.viewmodels.book.HomeViewModel
@@ -46,7 +47,7 @@ import com.qianrenni.reading.viewmodels.book.HomeViewModel
 @Composable
 fun HomeView(
     navigator: Navigator,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gridState = rememberLazyStaggeredGridState()

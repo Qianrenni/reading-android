@@ -4,12 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
-import com.qianrenni.reading.data.api.BookService
-import com.qianrenni.reading.data.api.ReadingProgressService
-import com.qianrenni.reading.data.api.ShelfService
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.ShelfItem
+import com.qianrenni.reading.data.remote.BookApi
+import com.qianrenni.reading.data.remote.ReadingProgressApi
+import com.qianrenni.reading.data.remote.ShelfApi
 import com.qianrenni.reading.util.SnackBarManager
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
-class ShelfViewModel : ViewModel() {
+class ShelfViewModel(
+    private val bookApi: BookApi,
+    private val readingProgressApi: ReadingProgressApi,
+    private val shelfApi: ShelfApi,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
     data class UiState(
         val shelfItems: List<ShelfItem> = emptyList(),
         val books: List<Book> = emptyList(),
@@ -32,11 +38,11 @@ class ShelfViewModel : ViewModel() {
 
     fun loadShelf() {
         if (uiState.value.pageStatus.isLoading) return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(pageStatus = it.pageStatus.loading()) }
 
-            val shelfItemsJob = async { ShelfService.getShelf() }
-            val historyItemJob = async { ReadingProgressService.getReadingProgress() }
+            val shelfItemsJob = async { shelfApi.getShelf() }
+            val historyItemJob = async { readingProgressApi.getReadingProgress() }
             val shelfItemsResult = shelfItemsJob.await()
             var shelfItems = emptyList<ShelfItem>()
             shelfItemsResult.onSuccess {
@@ -58,7 +64,7 @@ class ShelfViewModel : ViewModel() {
             }
             shelfItems.map { it.bookId }.let { bookIds ->
                 if (bookIds.isNotEmpty()) {
-                    BookService.getBooksByIds(bookIds).onSuccess { books ->
+                    bookApi.getBooksByIds(bookIds).onSuccess { books ->
                         books.sortBy { it.id }
                         _uiState.update { it.copy(books = books.toList()) }
                     }
@@ -78,8 +84,8 @@ class ShelfViewModel : ViewModel() {
 
 
     fun removeFromShelf(bookId: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = ShelfService.removeFromShelf(bookId)
+        viewModelScope.launch(ioDispatcher) {
+            val result = shelfApi.removeFromShelf(bookId)
             result.onEmpty {
                 SnackBarManager.showMessage("删除成功")
                 _uiState.update { state ->

@@ -34,6 +34,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.qianrenni.reading.BookRead
 import com.qianrenni.reading.R
 import com.qianrenni.reading.components.CommonPage
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.data.model.Book
 import com.qianrenni.reading.data.model.BookReadingProgress
 import com.qianrenni.reading.state.Navigator
@@ -42,7 +43,7 @@ import com.qianrenni.reading.viewmodels.book.HistoryViewModel
 @Composable
 fun ReadingHistoryView(
     navigator: Navigator,
-    viewModel: HistoryViewModel = viewModel()
+    viewModel: HistoryViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {

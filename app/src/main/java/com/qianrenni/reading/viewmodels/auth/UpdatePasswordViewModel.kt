@@ -4,10 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qianrenni.reading.common.CommonPageStatus
 import com.qianrenni.reading.common.CommonUiState
-import com.qianrenni.reading.data.api.UserService
 import com.qianrenni.reading.data.model.UpdatePasswordRequest
-import com.qianrenni.reading.data.store.AuthStore
+import com.qianrenni.reading.data.remote.UserApi
+import com.qianrenni.reading.data.repository.AuthRepository
 import com.qianrenni.reading.util.SnackBarManager
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,11 @@ data class UpdatePasswordState(
     override val pageStatus: CommonPageStatus = CommonPageStatus()
 ) : CommonUiState
 
-class UpdatePasswordViewModel : ViewModel() {
+class UpdatePasswordViewModel(
+    private val userApi: UserApi,
+    private val authRepository: AuthRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
     private val _updatePasswordState = MutableStateFlow(UpdatePasswordState())
     val updatePasswordState = _updatePasswordState.asStateFlow()
 
@@ -80,8 +85,8 @@ class UpdatePasswordViewModel : ViewModel() {
 
         _updatePasswordState.update { it.copy(pageStatus = it.pageStatus.loading()) }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = UserService.updatePassword(
+        viewModelScope.launch(ioDispatcher) {
+            val result = userApi.updatePassword(
                 UpdatePasswordRequest(
                     userName = state.email,
                     oldPassword = state.oldPassword,
@@ -93,7 +98,7 @@ class UpdatePasswordViewModel : ViewModel() {
 
             result.onEmpty {
                 // 清除用户状态
-                AuthStore.clear()
+                authRepository.clear()
                 SnackBarManager.showMessage("密码修改成功，请重新登录")
             }
             result.onFailure { message, _, _ ->

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qianrenni.reading.Login
+import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.state.Navigator
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
@@ -34,7 +35,7 @@ import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 @Composable
 fun ForgetPasswordView(
     navigator: Navigator,
-    viewModel: ForgetPasswordViewModel = viewModel()
+    viewModel: ForgetPasswordViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val forgetPasswordState by viewModel.forgetPasswordState.collectAsStateWithLifecycle()
     LaunchedEffect(forgetPasswordState.pageStatus.errorMessage) {
