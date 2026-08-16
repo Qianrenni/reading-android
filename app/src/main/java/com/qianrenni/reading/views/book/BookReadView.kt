@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,10 +27,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
@@ -50,7 +53,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,11 +62,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.WindowInsetsRulers
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextIndent
@@ -221,6 +226,8 @@ fun BookReadView(
     var commentInput by remember { mutableStateOf("") }
     val colorScheme = MaterialTheme.colorScheme
     val settingsRepository = appContainer().settingsRepository
+    // 当前登录用户 id（响应式收集，登录态变化时重组）
+    val currentUserId = appContainer().authRepository.user.collectAsState().value?.id
     var readSettings by remember {
         mutableStateOf(
             ReadSettings(
@@ -325,7 +332,7 @@ fun BookReadView(
                         modifier = Modifier
                             .fillMaxSize()
                     ) {
-                        Row() {
+                        Row {
                             Icon(
                                 Icons.Default.ChevronLeft,
                                 contentDescription = "back",
@@ -467,9 +474,8 @@ fun BookReadView(
     selectedCommentLine?.let { line ->
         val chapterId = uiState.catalog.getOrNull(uiState.currentIndex)?.id ?: 0
         val comments = uiState.chapterComments[line].orEmpty()
-        val currentUserId = appContainer().authRepository.user.value?.id
         ModalBottomSheet(
-            onDismissRequest = { selectedCommentLine = null }
+            onDismissRequest = { }
         ) {
             Column(
                 modifier = Modifier
@@ -563,6 +569,7 @@ fun BookReadView(
                     onValueChange = { commentInput = it.take(2000) },
                     placeholder = { Text("写下你的看法（2000字以内）") },
                     minLines = 2,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(
@@ -635,41 +642,73 @@ private fun ChapterPage(
                 inlineContent = mapOf(
                     icon to InlineTextContent(
                         placeholder = Placeholder(
-                            width = settings.fontSize.sp,
-                            height = settings.fontSize.sp,
+                            width = (settings.fontSize * 1.5f).sp,
+                            height = (settings.fontSize).sp,
                             placeholderVerticalAlign = PlaceholderVerticalAlign.TextBottom
                         )
                     ) {
-                        Box(
-                            modifier = Modifier.size(settings.fontSize.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Comment,
-                                contentDescription = "查看本行评论",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable { onLineClick(line, paragraph) },
-                                tint = Color(settings.textColor)
+                        LineCommentBubble(
+                            count = commentCounts[line]?.takeIf { it > 0 },
+                            tint = Color(settings.textColor),
+                            fontSize = settings.fontSize,
+                            onLineClick = { onLineClick(line, paragraph) },
+                            modifier = Modifier.size(
+                                width = (settings.fontSize * 1.5f).dp,
+                                height = (settings.fontSize).dp
                             )
-                            val count = commentCounts[line]
-                            if (count != null && count > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .background(Color(0xFFDCA000), CircleShape)
-                                        .padding(horizontal = 3.dp, vertical = 1.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (count > 99) "99+" else "$count",
-                                        color = Color.White,
-                                        fontSize = 8.sp
-                                    )
-                                }
-                            }
-                        }
+                        )
                     },
                 )
+            )
+        }
+    }
+}
+
+/**
+ * 行评论椭圆徽标：描边椭圆 + 中间文字（文字与正文同字号）。
+ * - 有评论：显示评论数（超过 99 显示 "99+"）
+ * - 无评论：显示三个点 "···"
+ */
+@Composable
+private fun LineCommentBubble(
+    count: Int?,
+    tint: Color,
+    fontSize: Float,
+    onLineClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .semantics { contentDescription = "查看本行评论" }
+            .clickable(onClick = onLineClick)
+            .border(
+                width = 1.dp,
+                color = tint,
+                shape = RoundedCornerShape(percent = 50)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (count == null) {
+            // 无评论：三个点用元素绘制（实心圆点）
+            Row(
+                horizontalArrangement = Arrangement.spacedBy((fontSize * 0.2f).dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .size((fontSize * 0.2f).dp)
+                            .background(tint, CircleShape)
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = if (count > 99) "99+" else "$count",
+                color = tint,
+                fontSize = (fontSize * 0.5f).sp,
+                lineHeight = (fontSize * 0.5f).sp,
+                maxLines = 1
             )
         }
     }
