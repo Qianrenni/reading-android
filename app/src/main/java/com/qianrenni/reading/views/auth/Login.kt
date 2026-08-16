@@ -2,6 +2,7 @@ package com.qianrenni.reading.views.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -139,25 +140,28 @@ fun LoginView(
                 }
             }
 
-            // 用户协议与隐私政策同意
-            Row(
+            // 用户协议与隐私政策同意（空间不足时换行，避免按钮文本被挤压换行）
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.Center
             ) {
-                Checkbox(
-                    checked = privacyAgreed,
-                    onCheckedChange = { privacyAgreed = it },
-                    modifier = Modifier.testTag("consent_checkbox")
-                )
-                Text(
-                    text = "我已阅读并同意",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = privacyAgreed,
+                        onCheckedChange = { privacyAgreed = it },
+                        modifier = Modifier.testTag("consent_checkbox")
+                    )
+                    Text(
+                        text = "我已阅读并同意",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 TextButton(onClick = { navigator.navigate(PrivacyPolicy) }) {
                     Text(
                         text = "《用户协议》和《隐私政策》",
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1
                     )
                 }
             }
