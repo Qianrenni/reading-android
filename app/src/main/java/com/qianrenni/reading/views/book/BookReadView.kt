@@ -475,7 +475,7 @@ fun BookReadView(
         val chapterId = uiState.catalog.getOrNull(uiState.currentIndex)?.id ?: 0
         val comments = uiState.chapterComments[line].orEmpty()
         ModalBottomSheet(
-            onDismissRequest = { }
+            onDismissRequest = { selectedCommentLine = null }
         ) {
             Column(
                 modifier = Modifier
@@ -580,6 +580,7 @@ fun BookReadView(
                         if (chapterId > 0) {
                             viewModel.createLineComment(chapterId, line, commentInput) {
                                 commentInput = ""
+                                selectedCommentLine = null
                             }
                         }
                     }) {
