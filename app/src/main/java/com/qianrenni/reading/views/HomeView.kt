@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
@@ -65,7 +66,9 @@ fun HomeView(
         snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastVisibleIndex ->
                 val totalItems = uiState.books.size
+                // 仅非搜索模式才触发分页加载（搜索结果不参与分页）
                 if (lastVisibleIndex != null &&
+                    uiState.searchQuery.isBlank() &&
                     lastVisibleIndex >= totalItems - 5 &&
                     !uiState.isLoading &&
                     uiState.selectedCategory.isNotEmpty()
@@ -98,6 +101,7 @@ fun HomeView(
                     books = uiState.books,
                     gridState = gridState,
                     navigator = navigator,
+                    isLoading = uiState.isLoading,
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -160,6 +164,7 @@ private fun BookGrid(
     gridState: androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState,
     navigator: Navigator,
     isSearchResult: Boolean = false,
+    isLoading: Boolean = false,
 ) {
     Box(modifier = modifier) {
         if (books.isEmpty()) {
@@ -187,6 +192,22 @@ private fun BookGrid(
                             navigator.navigate(BookInfo(bookId = book.id))
                         }
                     )
+                }
+                // 触底加载中的指示器（仅非搜索模式）
+                if (isLoading && !isSearchResult) {
+                    item(key = "loading_more") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -24,3 +24,7 @@
     public static int v(...);
     public static int i(...);
 }
+
+# security-crypto (Tink) 引用了但未随包提供的注解类，R8 需忽略缺失引用
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**

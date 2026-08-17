@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 class HomeViewModel(
     private val bookApi: BookApi,
@@ -41,6 +42,8 @@ class HomeViewModel(
     private val categoryBooksCache = mutableMapOf<String, MutableList<Book>>()
     private val categoryCursors = mutableMapOf<String, Int>()
     private val categoryFinished = mutableMapOf<String, Boolean>()
+    // 正在请求中的分类，防止同一分类并发重复请求（触底加载与切换分类可能同时触发）
+    private val loadingCategories = ConcurrentHashMap.newKeySet<String>()
 
     // 搜索防抖任务
     private var searchJob: Job? = null
@@ -158,43 +161,64 @@ class HomeViewModel(
     }
 
     private fun loadBooksByCategory(category: String, offset: Int) {
+        // 同一分类已有请求在途时直接忽略，避免快速滚动/重复触发导致的并发重复请求
+        if (!loadingCategories.add(category)) return
+
+        // 同步置 loading，避免快速滚动时在置位前重复触发 loadMoreBooks
+        _uiState.update { it.copy(isLoading = true, isError = false) }
+
         viewModelScope.launch(ioDispatcher) {
-            _uiState.update { it.copy(isLoading = true, isError = false) }
+            try {
+                val result = bookApi.getBooksByCategory(category, offset, LIMIT)
+                result.onSuccess { books ->
+                    if (books.isNotEmpty()) {
+                        val cache = categoryBooksCache.getOrPut(category) { mutableListOf() }
+                        val newBooks = books.filter { newBook -> cache.none { it.id == newBook.id } }
+                        cache.addAll(newBooks)
+                        categoryCursors[category] = offset + books.size
 
-            val result = bookApi.getBooksByCategory(category, offset, LIMIT)
-            result.onSuccess { books ->
-                if (books.isNotEmpty()) {
-                    val cache = categoryBooksCache.getOrPut(category) { mutableListOf() }
-                    val newBooks = books.filter { newBook ->
-                        cache.none { it.id == newBook.id }
-                    }
-                    cache.addAll(newBooks)
-                    categoryCursors[category] = offset + books.size
-
-                    if (category == _uiState.value.selectedCategory) {
+                        // 无论当前选中分类是否变化，都必须复位 isLoading：
+                        // 否则在途请求完成后（此时用户已切走）loading 会一直卡在 true，
+                        // 导致触底加载（loadMoreBooks / 视图中的 !isLoading 判断）永久失效。
+                        // 只有请求结果属于当前选中分类时才刷新 books。
+                        // toList() 生成新列表引用，确保 LazyVerticalStaggeredGrid 能感知 books 变化并重组
                         _uiState.update { item ->
+                            val refresh = category == item.selectedCategory
                             item.copy(
-                                books = categoryBooksCache[category] ?: emptyList(),
+                                books = if (refresh) {
+                                    categoryBooksCache[category]?.toList() ?: emptyList()
+                                } else {
+                                    item.books
+                                },
                                 isLoading = false,
                                 isError = false
                             )
                         }
+                    } else {
+                        // 标记分类已加载完毕
+                        categoryFinished[category] = true
+                        _uiState.update { it.copy(isLoading = false) }
                     }
-                } else {
-                    // 标记分类已加载完毕
-                    categoryFinished[category] = true
+                }
+                result.onFailure { message, _, _ ->
+                    // 非当前选中分类的失败不应污染当前视图的错误状态，但 isLoading 必须复位
+                    _uiState.update { item ->
+                        if (category == item.selectedCategory) {
+                            item.copy(isLoading = false, isError = true, errorMessage = message)
+                        } else {
+                            item.copy(isLoading = false)
+                        }
+                    }
+                    Log.e("HomeVM", "fetch FAILED: category=$category offset=$offset message=$message")
+                }
+                result.onEmpty {
+                    // data == null 时 onSuccess/onFailure 都不会走，必须显式复位 isLoading，避免卡死
                     _uiState.update { it.copy(isLoading = false) }
                 }
-            }
-            result.onFailure { message, _, _ ->  // 修复参数
-                _uiState.update { item ->
-                    item.copy(
-                        isLoading = false,
-                        isError = true,
-                        errorMessage = message
-                    )
-                }
-                Log.e("HomeVM", "Load books failed: $message")
+            } finally {
+                loadingCategories.remove(category)
+                // 兜底：无论协程以何种方式结束（含异常/取消）都保证 isLoading 复位
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }

@@ -62,7 +62,8 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            // 开启 R8 压缩/优化，proguard-rules.pro 里的 -assumenosideeffects 会剔除 Log.d/v/i
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
