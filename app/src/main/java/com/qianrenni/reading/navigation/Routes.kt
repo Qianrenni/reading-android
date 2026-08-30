@@ -19,6 +19,10 @@ data object ForgetPassword : NavKey
 @Serializable
 data object UpdatePassword : NavKey
 
+/** 扫一扫登录网页端 */
+@Serializable
+data object ScanQr : NavKey
+
 @Serializable
 data object Bookshelf : NavKey
 

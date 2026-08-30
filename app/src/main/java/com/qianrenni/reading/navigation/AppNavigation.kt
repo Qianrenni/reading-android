@@ -26,6 +26,7 @@ import com.qianrenni.reading.views.HomeView
 import com.qianrenni.reading.views.auth.ForgetPasswordView
 import com.qianrenni.reading.views.auth.LoginView
 import com.qianrenni.reading.views.auth.RegisterView
+import com.qianrenni.reading.views.auth.ScanQrView
 import com.qianrenni.reading.views.auth.UpdatePasswordView
 import com.qianrenni.reading.views.book.BookInfoView
 import com.qianrenni.reading.views.book.BookReadView
@@ -146,6 +147,7 @@ private fun EntryProviderScope<NavKey>.readerFeature(navigator: Navigator) {
 /** 用户相关路由 */
 private fun EntryProviderScope<NavKey>.userFeature(navigator: Navigator) {
     entry<Profile> { ProfileView(navigator = navigator) }
+    entry<ScanQr> { ScanQrView(navigator = navigator) }
 }
 
 /** 法务相关路由（用户协议、隐私政策等） */
