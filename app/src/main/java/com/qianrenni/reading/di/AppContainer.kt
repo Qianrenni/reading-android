@@ -15,8 +15,6 @@ import com.qianrenni.reading.data.remote.CommentApi
 import com.qianrenni.reading.data.remote.CommentApiImpl
 import com.qianrenni.reading.data.remote.HttpClientFactory
 import com.qianrenni.reading.data.remote.KtorTokenRefresher
-import com.qianrenni.reading.data.remote.QrLoginApi
-import com.qianrenni.reading.data.remote.QrLoginApiImpl
 import com.qianrenni.reading.data.remote.ReadingProgressApi
 import com.qianrenni.reading.data.remote.ReadingProgressApiImpl
 import com.qianrenni.reading.data.remote.ReportApi
@@ -45,7 +43,6 @@ import kotlinx.coroutines.SupervisorJob
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
-import com.qianrenni.reading.viewmodels.auth.QrLoginViewModel
 import com.qianrenni.reading.viewmodels.auth.RegisterViewModel
 import com.qianrenni.reading.viewmodels.auth.UpdatePasswordViewModel
 import com.qianrenni.reading.viewmodels.book.BookInfoViewModel
@@ -95,7 +92,6 @@ class AppContainer(private val context: Context) {
     val authApi: AuthApi = AuthApiImpl(apiClient)
     val bookApi: BookApi = BookApiImpl(apiClient)
     val commentApi: CommentApi = CommentApiImpl(apiClient)
-    val qrLoginApi: QrLoginApi = QrLoginApiImpl(apiClient)
     val readingProgressApi: ReadingProgressApi = ReadingProgressApiImpl(apiClient)
     val reportApi: ReportApi = ReportApiImpl(apiClient)
     val shelfApi: ShelfApi = ShelfApiImpl(apiClient)
@@ -117,7 +113,6 @@ class AppContainer(private val context: Context) {
     val viewModelFactory = viewModelFactory {
         initializer { AuthViewModel(authRepository) }
         initializer { LoginViewModel(authApi, authRepository, ioDispatcher) }
-        initializer { QrLoginViewModel(qrLoginApi, ioDispatcher) }
         initializer { RegisterViewModel(authApi, ioDispatcher) }
         initializer { ForgetPasswordViewModel(userApi, ioDispatcher) }
         initializer { UpdatePasswordViewModel(userApi, authRepository, ioDispatcher) }

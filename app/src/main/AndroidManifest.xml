@@ -3,12 +3,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- 扫码登录网页端：相机权限（运行时动态申请） -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <!-- 相机为可选硬件：无相机设备仍可安装使用应用其余功能 -->
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
 
     <application
         android:name=".ReadingApplication"

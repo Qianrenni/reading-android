@@ -3,12 +3,12 @@ package com.qianrenni.reading.views.user
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +29,6 @@ import coil.compose.AsyncImage
 import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.Navigator
-import com.qianrenni.reading.navigation.ScanQr
 import com.qianrenni.reading.navigation.UpdatePassword
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 
@@ -42,10 +41,10 @@ fun ProfileView(
     val appConfig = appContainer().appConfig
     var showServerDialog by remember { mutableStateOf(false) }
     var serverUrl by remember { mutableStateOf(appConfig.currentBaseUrl()) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -112,16 +111,6 @@ fun ProfileView(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("服务器设置")
-        }
-
-        // 扫码登录网页端
-        Button(
-            onClick = {
-                navigator.navigate(ScanQr)
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("扫一扫登录网页端")
         }
 
         // 修改密码按钮
