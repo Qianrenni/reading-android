@@ -1,6 +1,5 @@
 package com.qianrenni.reading.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,12 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
-import com.qianrenni.reading.R
 import com.qianrenni.reading.data.model.Book
 
 @Composable
@@ -36,16 +32,11 @@ fun BookItem(
                 }
             )
     ) {
-        Image(
-            painter = rememberAsyncImagePainter(
-                model = book.cover,
-                // 可选：添加占位/错误状态
-                placeholder = painterResource(R.drawable.skeleton),
-                error = painterResource(R.drawable.skeleton)
-            ),
-            contentDescription = book.name,
-            modifier = Modifier
-                .fillMaxWidth(),
+        BookCoverImage(
+            book = book,
+            modifier = Modifier.fillMaxWidth(),
+            width = null,
+            height = null,
             contentScale = ContentScale.FillWidth
         )
         // 书籍信息

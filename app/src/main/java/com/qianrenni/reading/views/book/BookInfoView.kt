@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.qianrenni.reading.components.BookCoverImage
 import com.qianrenni.reading.components.BookItem
 import com.qianrenni.reading.components.CommonPage
 import com.qianrenni.reading.data.model.Book
@@ -222,11 +223,12 @@ private fun BookInfoCard(book: Book) {
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 封面图片
-        AsyncImage(
-            model = book.cover,
-            contentDescription = book.name,
+        BookCoverImage(
+            book = book,
             modifier = Modifier.weight(1f),
-            contentScale = ContentScale.FillWidth,
+            width = null,
+            height = null,
+            contentScale = ContentScale.FillWidth
         )
         // 书籍信息
         Column(

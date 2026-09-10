@@ -26,9 +26,12 @@ import com.qianrenni.reading.data.remote.UserApi
 import com.qianrenni.reading.data.remote.UserApiImpl
 import com.qianrenni.reading.data.repository.AppConfigRepository
 import com.qianrenni.reading.data.repository.AppConfigRepositoryImpl
+import com.qianrenni.reading.data.repository.AppUpdateRepository
+import com.qianrenni.reading.data.repository.AppUpdateRepositoryImpl
 import com.qianrenni.reading.data.repository.AuthRepository
 import com.qianrenni.reading.data.repository.AuthRepositoryImpl
 import com.qianrenni.reading.data.repository.EncryptedKeyValueStore
+import com.qianrenni.reading.data.repository.KtorFileDownloader
 import com.qianrenni.reading.data.repository.SessionManager
 import com.qianrenni.reading.data.repository.SharedPrefsKeyValueStore
 import com.qianrenni.reading.data.repository.SettingsRepository
@@ -42,6 +45,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import com.qianrenni.reading.viewmodels.app.AppUpdateViewModel
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
@@ -54,6 +58,9 @@ import com.qianrenni.reading.viewmodels.book.HomeViewModel
 import com.qianrenni.reading.viewmodels.book.ShelfViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import com.qianrenni.reading.util.AndroidApkReader
+import com.qianrenni.reading.util.installedAppVersion
+import java.io.File
 
 /**
  * 手动依赖注入容器（零第三方依赖）：
@@ -62,6 +69,9 @@ import kotlinx.coroutines.Dispatchers
 class AppContainer(private val context: Context) {
 
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    /** 更新包在静态目录中的相对路径。 */
+    private val apkPath = APK_PATH
 
     // ---- 会话 / 配置 / 网络 ----
     val sessionManager: SessionManager = SessionManager(EncryptedKeyValueStore(context, "auth_prefs"))
@@ -105,6 +115,17 @@ class AppContainer(private val context: Context) {
     // ---- Repository ----
     val authRepository: AuthRepository = AuthRepositoryImpl(sessionManager, authApi, tokenRefresher)
 
+    // ---- 应用更新：更新包由后端静态目录提供（{baseUrl}static/guga.apk）----
+    val appUpdateRepository: AppUpdateRepository = AppUpdateRepositoryImpl(
+        currentVersionProvider = { installedAppVersion(context) },
+        apkUrlProvider = { appConfig.currentBaseUrl() + apkPath },
+        apkFileProvider = { File(context.cacheDir, "app_update/$APK_FILE_NAME") },
+        downloader = KtorFileDownloader(bareClient),
+        apkReader = AndroidApkReader(context),
+        expectedPackageName = context.packageName,
+        ioDispatcher = ioDispatcher
+    )
+
     // 阅读设置 DataStore（单例，进程级存活）
     private val settingsDataStore: DataStore<Preferences> by lazy {
         PreferenceDataStoreFactory.create(
@@ -126,6 +147,13 @@ class AppContainer(private val context: Context) {
         initializer { HistoryViewModel(bookApi, readingProgressApi, shelfApi, ioDispatcher) }
         initializer { ShelfViewModel(bookApi, readingProgressApi, shelfApi, ioDispatcher) }
         initializer { BookReadViewModel(bookApi, commentApi, readingProgressApi, reportApi, ioDispatcher) }
+        initializer { AppUpdateViewModel(appUpdateRepository, ioDispatcher) }
+    }
+
+    private companion object {
+        /** 后端静态目录中的更新包文件名。 */
+        const val APK_FILE_NAME = "guga.apk"
+        const val APK_PATH = "static/$APK_FILE_NAME"
     }
 }
 

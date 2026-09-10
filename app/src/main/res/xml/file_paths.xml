@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 应用更新下载的 APK 缓存在 cacheDir/app_update/ 下，通过 FileProvider 暴露给系统安装器 -->
+    <cache-path
+        name="app_update"
+        path="app_update/" />
+</paths>

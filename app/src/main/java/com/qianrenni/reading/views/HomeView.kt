@@ -129,7 +129,9 @@ private fun SearchBar(
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChanged,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(0.dp),
         placeholder = { Text("搜索书籍(书名或者作者名)") },
         leadingIcon = {
             Icon(

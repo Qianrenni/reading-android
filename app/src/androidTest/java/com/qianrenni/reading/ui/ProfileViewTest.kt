@@ -59,10 +59,22 @@ class ProfileViewTest {
     fun rendersThemeSwitcher() {
         setContent(FakeAuthRepository(initialUser = testUser()))
 
+        // 主题选项收在列表项里，点击后弹窗展示
         composeRule.onNodeWithText("主题外观").assertIsDisplayed()
+        composeRule.onNodeWithText("主题外观").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("跟随系统")).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("跟随系统").assertIsDisplayed()
         composeRule.onNodeWithText("白天").assertIsDisplayed()
         composeRule.onNodeWithText("黑夜").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersUpdateEntry() {
+        setContent(FakeAuthRepository(initialUser = testUser()))
+
+        composeRule.onNodeWithText("检查更新").assertIsDisplayed()
     }
 
     @Test

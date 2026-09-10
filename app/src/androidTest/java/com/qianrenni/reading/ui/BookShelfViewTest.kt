@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.navigation3.runtime.NavBackStack
 import com.qianrenni.reading.FakeBookApi
 import com.qianrenni.reading.FakeReadingProgressApi
@@ -71,6 +73,9 @@ class BookShelfViewTest {
         composeRule.onNodeWithText("斗破苍穹").assertIsDisplayed()
         composeRule.onNodeWithText("作者").assertIsDisplayed()
         composeRule.onNodeWithText("继续阅读").assertIsDisplayed()
+
+        // 删除按钮默认隐藏在右侧，左滑后露出
+        revealDeleteButton()
         composeRule.onNodeWithContentDescription("删除").assertIsDisplayed()
     }
 
@@ -90,6 +95,7 @@ class BookShelfViewTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodes(hasText("斗破苍穹")).fetchSemanticsNodes().isNotEmpty()
         }
+        revealDeleteButton()
         composeRule.onNodeWithContentDescription("删除").performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -97,5 +103,11 @@ class BookShelfViewTest {
         }
         assertTrue(shelfApi.removeCalled)
         assertTrue(shelfApi.lastRemovedBookId == 1)
+    }
+
+    /** 左滑列表项，露出隐藏在右侧的删除按钮。 */
+    private fun revealDeleteButton() {
+        composeRule.onNodeWithText("斗破苍穹").performTouchInput { swipeLeft() }
+        composeRule.waitForIdle()
     }
 }

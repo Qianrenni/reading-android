@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,7 +62,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.WindowInsetsRulers
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.Placeholder
@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.qianrenni.reading.R
+import com.qianrenni.reading.components.BookCoverImage
 import com.qianrenni.reading.components.BottomControlBar
 import com.qianrenni.reading.components.CatalogDrawer
 import com.qianrenni.reading.components.CommonPage
@@ -281,7 +281,7 @@ fun BookReadView(
                     viewModel.viewModelScope.launch(Dispatchers.Default) {
                         availableHeight = maxHeight
                         val height =
-                            with(density) { maxHeight.toPx() - 36.sp.toPx() }
+                            with(density) { maxHeight.toPx() - 10.dp.toPx() - 36.sp.toPx() }
                         val availableWidth =
                             with(density) { maxWidth.toPx() - 16.dp.toPx() }
                         while (true) {
@@ -354,9 +354,10 @@ fun BookReadView(
                                 )
                             )
                         }
-                        HorizontalDivider(
-                            thickness = 1.dp,
-                            color = Color(readSettings.textColor)
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(10.dp)
                         )
                         ChapterPage(
                             content = page.contents,
@@ -397,18 +398,15 @@ fun BookReadView(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(
-                                        model = uiState.book?.cover,
-                                        // 可选：添加占位/错误状态
-                                        placeholder = painterResource(R.drawable.skeleton),
-                                        error = painterResource(R.drawable.skeleton)
-                                    ),
-                                    contentDescription = uiState.book?.name,
-                                    modifier = Modifier
-                                        .height(60.dp),
-                                    contentScale = ContentScale.FillHeight
-                                )
+                                uiState.book?.let { book ->
+                                    BookCoverImage(
+                                        book = book,
+                                        modifier = Modifier.height(60.dp),
+                                        width = null,
+                                        height = null,
+                                        contentScale = ContentScale.FillHeight
+                                    )
+                                }
                                 Column(modifier = Modifier.padding(start = 8.dp)) {
                                     Text(
                                         uiState.book?.name ?: "",

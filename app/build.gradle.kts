@@ -17,16 +17,16 @@ val releaseKeyPassword = keystoreProps.getProperty("keyPassword")
 
 // 只有 4 项都配置完整才启用 release 签名，避免 null 强制转换导致同步崩溃
 val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
-    !releaseStorePassword.isNullOrBlank() &&
-    !releaseKeyAlias.isNullOrBlank() &&
-    !releaseKeyPassword.isNullOrBlank()
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
 
 if (!hasReleaseSigning) {
     logger.warn(
         "Release signing config is missing in local.properties " +
-            "(storeFile/storePassword/keyAlias/keyPassword). " +
-            "The 'release' signingConfig will be left empty. " +
-            "Add these keys to local.properties to sign release builds."
+                "(storeFile/storePassword/keyAlias/keyPassword). " +
+                "The 'release' signingConfig will be left empty. " +
+                "Add these keys to local.properties to sign release builds."
     )
 }
 
@@ -53,8 +53,8 @@ android {
         applicationId = "com.qianrenni.reading"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
