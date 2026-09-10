@@ -33,6 +33,8 @@ import com.qianrenni.reading.data.repository.SessionManager
 import com.qianrenni.reading.data.repository.SharedPrefsKeyValueStore
 import com.qianrenni.reading.data.repository.SettingsRepository
 import com.qianrenni.reading.data.repository.SettingsRepositoryImpl
+import com.qianrenni.reading.data.repository.ThemeRepository
+import com.qianrenni.reading.data.repository.ThemeRepositoryImpl
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -64,6 +66,9 @@ class AppContainer(private val context: Context) {
     // ---- 会话 / 配置 / 网络 ----
     val sessionManager: SessionManager = SessionManager(EncryptedKeyValueStore(context, "auth_prefs"))
     val appConfig: AppConfigRepository = AppConfigRepositoryImpl(SharedPrefsKeyValueStore(context, "app_config"))
+    // 主题外观（跟随系统 / 白天 / 黑夜）
+    val themeRepository: ThemeRepository =
+        ThemeRepositoryImpl(SharedPrefsKeyValueStore(context, "app_theme"))
 
     // 裸客户端：用于令牌刷新（避免 Auth 递归）
     private val bareClient: HttpClient = HttpClientFactory.createBareClient()

@@ -56,6 +56,16 @@ class ProfileViewTest {
     }
 
     @Test
+    fun rendersThemeSwitcher() {
+        setContent(FakeAuthRepository(initialUser = testUser()))
+
+        composeRule.onNodeWithText("主题外观").assertIsDisplayed()
+        composeRule.onNodeWithText("跟随系统").assertIsDisplayed()
+        composeRule.onNodeWithText("白天").assertIsDisplayed()
+        composeRule.onNodeWithText("黑夜").assertIsDisplayed()
+    }
+
+    @Test
     fun serverDialogOpensAndCloses() {
         setContent(FakeAuthRepository(initialUser = testUser()))
 

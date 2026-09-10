@@ -13,77 +13,78 @@ import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
     // --- 核心品牌色 ---
-    // Primary: 眼睛的清透蓝色 #4A90E2
-    primary = Color(0xFFD5A13E),
-    onPrimary = Color(0xFF0E181B), // 白色文字
+    // Primary: 温暖的咖啡棕 #8C5A2B
+    primary = Color(0xFF8C5A2B),
+    onPrimary = Color(0xFFFFFFFF), // 白色文字
 
-    // PrimaryContainer: 浅天蓝 #D3E4FD (用于 Tag 背景或次要按钮)
-    primaryContainer = Color(0xFFD5A13E).copy(alpha = 0.1f),
-    onPrimaryContainer = Color(0xFFD5A13E), // 深蓝文字
+    // PrimaryContainer: 浅奶咖色 (用于 Tag 背景或次要按钮)
+    primaryContainer = Color(0xFFF5DEC4),
+    onPrimaryContainer = Color(0xFF3A2007), // 深棕文字
 
-    // Secondary: 中性灰，不抢主色风头
-    secondary = Color(0xFFE0E0E0),
-    onSecondary = Color(0xFF0E181B),
+    // Secondary: 中性暖棕，不抢主色风头
+    secondary = Color(0xFF6F5B45),
+    onSecondary = Color(0xFFFFFFFF),
 
-    secondaryContainer = Color(0xFFF5F5F5),
-    onSecondaryContainer = Color(0xFF0E181B),
+    secondaryContainer = Color(0xFFF3E3D2),
+    onSecondaryContainer = Color(0xFF28180A),
 
-    // Tertiary: 脸颊的桃粉色 #FF8A65 (用于强调、通知、特殊标签)
-    tertiary = Color(0xFFF7A595),
-    onTertiary = Color(0xFF0E181B), // 黑色文字，因为粉色较亮
+    // Tertiary: 陶土色 (用于强调、通知、特殊标签)
+    tertiary = Color(0xFF9A6039),
+    onTertiary = Color(0xFFFFFFFF),
 
-    tertiaryContainer = Color(0xFFF7A595).copy(alpha = 0.2f),
-    onTertiaryContainer = Color(0xFFF7A595),
+    tertiaryContainer = Color(0xFFFFDBC7),
+    onTertiaryContainer = Color(0xFF3A1600),
 
     // --- 背景与表面 ---
-    background = Color(0xFFe0e0e0), // 极浅灰，比纯白更有质感
-    onBackground = Color(0xFF0E181B),
+    background = Color(0xFFFDF6EF), // 米白，比纯白更柔和
+    onBackground = Color(0xFF201A15),
 
-    surface = Color(0xFFF0F0F0), // 纯白卡片
-    onSurface = Color(0xFF0E181B),
+    surface = Color(0xFFFDF6EF), // 卡片背景
+    onSurface = Color(0xFF201A15),
     surfaceContainer = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFFE8E8E8),
-    onSurfaceVariant = Color(0xFF565656),
-    outline = Color(0xFF757575),
-    outlineVariant = Color(0xFFBDBDBD),
+    surfaceVariant = Color(0xFFF0DFCC),
+    onSurfaceVariant = Color(0xFF52443A),
+    outline = Color(0xFF857469),
+    outlineVariant = Color(0xFFD7C2B0),
     scrim = Color.Black.copy(alpha = 0.5f),
     error = Color(0xFFB00020),
     onError = Color(0xFFFFFFFF)
 )
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFD5A13E),
-    onPrimary = Color(0xFF0E181B), // 深色文字，因为蓝色变亮了
+    // Primary: 提亮的驼棕色 #B38A5A
+    primary = Color(0xFFB38A5A),
+    onPrimary = Color(0xFF3A2007), // 深棕文字，因为主色变亮了
 
-    // PrimaryContainer: 深蓝色 #0D47A1
-    primaryContainer = Color(0xFFD5A13E).copy(alpha = 0.2f),
-    onPrimaryContainer = Color(0xFFD5A13E),
+    // PrimaryContainer: 深咖啡棕
+    primaryContainer = Color(0xFF5A3D1E),
+    onPrimaryContainer = Color(0xFFF5DEC4),
 
-    // Secondary: 深灰
-    secondary = Color(0xFF424242),
-    onSecondary = Color(0xFFE0E0E0),
+    // Secondary: 浅暖棕
+    secondary = Color(0xFFCDBCA8),
+    onSecondary = Color(0xFF36281A),
 
-    secondaryContainer = Color(0xFF303030),
-    onSecondaryContainer = Color(0xFFE0E0E0),
+    secondaryContainer = Color(0xFF4E3F2E),
+    onSecondaryContainer = Color(0xFFF3E3D2),
 
-    // Tertiary: 稍暗的橙色 #FF7043，保持温暖感
-    tertiary = Color(0xFFF7A595),
-    onTertiary = Color(0xFF0E181B),
+    // Tertiary: 稍亮的陶土色，保持温暖感
+    tertiary = Color(0xFFE0B89A),
+    onTertiary = Color(0xFF4A2A12),
 
-    tertiaryContainer = Color(0xFFF7A595).copy(alpha = 0.2f),
-    onTertiaryContainer = Color(0xFFF7A595),
+    tertiaryContainer = Color(0xFF673F22),
+    onTertiaryContainer = Color(0xFFFFDBC7),
 
     // --- 背景与表面 ---
-    background = Color(0xFF0E181B), // 标准暗黑背景
-    onBackground = Color(0xFFE0E0E0),
+    background = Color(0xFF1A130D), // 深棕黑背景
+    onBackground = Color(0xFFEDE0D4),
 
-    surface = Color(0xFF162429), // 稍亮的卡片背景
-    surfaceContainer = Color(0xFF162429),
-    onSurface = Color(0xFFE0E0E0),
+    surface = Color(0xFF1F1810), // 稍亮的卡片背景
+    surfaceContainer = Color(0xFF241C14),
+    onSurface = Color(0xFFEDE0D4),
 
-    surfaceVariant = Color(0xFF2C383E),
-    onSurfaceVariant = Color(0xFFB0BEC5),
-    outline = Color(0xFF9E9E9E),
-    outlineVariant = Color(0xFF424242),
+    surfaceVariant = Color(0xFF3A2E24),
+    onSurfaceVariant = Color(0xFFD8C2B0),
+    outline = Color(0xFFA08D7D),
+    outlineVariant = Color(0xFF4A3D32),
     scrim = Color.White.copy(alpha = 0.2f),
 
     error = Color(0xFFCF6679),

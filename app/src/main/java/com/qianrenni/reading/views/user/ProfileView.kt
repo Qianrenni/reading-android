@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.qianrenni.reading.data.repository.ThemeMode
+import com.qianrenni.reading.data.repository.ThemeRepository
 import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.Navigator
@@ -35,9 +38,11 @@ import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 @Composable
 fun ProfileView(
     navigator: Navigator,
-    authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory)
+    authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory),
+    themeRepository: ThemeRepository = appContainer().themeRepository
 ) {
     val user by authViewModel.getUser().collectAsStateWithLifecycle()
+    val themeMode by themeRepository.mode.collectAsStateWithLifecycle()
     val appConfig = appContainer().appConfig
     var showServerDialog by remember { mutableStateOf(false) }
     var serverUrl by remember { mutableStateOf(appConfig.currentBaseUrl()) }
@@ -99,6 +104,30 @@ fun ProfileView(
                     else
                         MaterialTheme.colorScheme.error
                 )
+            }
+        }
+
+        // 主题外观切换
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "主题外观",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ThemeMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = mode == themeMode,
+                        onClick = { themeRepository.setMode(mode) },
+                        label = { Text(mode.displayName) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
 
