@@ -42,4 +42,25 @@ class RoutesTest {
         val decoded = json.decodeFromString(BookInfo.serializer(), encoded)
         assertEquals(BookInfo(9), decoded)
     }
+
+    @Test
+    fun `WebPage serializes with args`() {
+        val encoded = json.encodeToString(
+            WebPage.serializer(),
+            WebPage("https://example.com/a?b=1", "活动详情")
+        )
+        assertEquals("""{"url":"https://example.com/a?b=1","title":"活动详情"}""", encoded)
+
+        val decoded = json.decodeFromString(WebPage.serializer(), encoded)
+        assertEquals(WebPage("https://example.com/a?b=1", "活动详情"), decoded)
+    }
+
+    @Test
+    fun `WebPage title defaults to null`() {
+        val decoded = json.decodeFromString(
+            WebPage.serializer(),
+            """{"url":"https://example.com"}"""
+        )
+        assertEquals(WebPage("https://example.com", null), decoded)
+    }
 }

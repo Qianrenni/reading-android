@@ -33,6 +33,7 @@ import com.qianrenni.reading.views.book.BookShelfView
 import com.qianrenni.reading.views.book.ReadingHistoryView
 import com.qianrenni.reading.views.legal.PrivacyPolicyView
 import com.qianrenni.reading.views.user.ProfileView
+import com.qianrenni.reading.views.web.WebPageView
 import io.ktor.util.reflect.instanceOf
 
 private const val TAG = "AppNavigation"
@@ -60,7 +61,8 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
     }
     // 定义需要显示底部导航栏的路由
     val routesWithBottomBar = listOf(Home::class, Bookshelf::class, History::class, Profile::class)
-    val routesWithoutPadding = listOf(BookRead::class)
+    // 自带 Scaffold/顶栏、自行处理系统栏内边距的页面
+    val routesWithoutPadding = listOf(BookRead::class, WebPage::class)
     LaunchedEffect(Unit) {
         SnackBarManager.messages.collect { message ->
             snackBarHostState.showSnackbar(message)
@@ -94,6 +96,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
         readerFeature(navigator)
         userFeature(navigator)
         legalFeature(navigator)
+        webFeature(navigator)
     }
     Scaffold(
         modifier = Modifier.background(color = MaterialTheme.colorScheme.background),
@@ -151,4 +154,15 @@ private fun EntryProviderScope<NavKey>.userFeature(navigator: Navigator) {
 /** 法务相关路由（用户协议、隐私政策等） */
 private fun EntryProviderScope<NavKey>.legalFeature(navigator: Navigator) {
     entry<PrivacyPolicy> { PrivacyPolicyView(navigator = navigator) }
+}
+
+/** H5 相关路由（应用内 WebView 打开 http/https 链接） */
+private fun EntryProviderScope<NavKey>.webFeature(navigator: Navigator) {
+    entry<WebPage> { key ->
+        WebPageView(
+            navigator = navigator,
+            url = key.url,
+            title = key.title
+        )
+    }
 }

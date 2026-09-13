@@ -47,6 +47,7 @@ import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.navigation.UpdatePassword
+import com.qianrenni.reading.navigation.openWebPage
 import com.qianrenni.reading.util.ApkInstaller
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.app.AppUpdateState
@@ -58,6 +59,10 @@ import java.io.File
 
 /** 后端默认头像。 */
 private const val DEFAULT_AVATAR = "http://49.235.107.221:8000/static/guga.webp"
+
+/** 「计算机知识」入口：在应用内 H5 容器打开的地址与标题。 */
+private const val COMPUTER_KNOWLEDGE_URL = "https://qyani.netlify.app/#/"
+private const val COMPUTER_KNOWLEDGE_TITLE = "星阑小筑·学习札记"
 
 @Composable
 fun ProfileView(
@@ -100,6 +105,25 @@ fun ProfileView(
                 color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Column {
+                    SettingItem(
+                        title = "计算机知识",
+                        onClick = {
+                            navigator.openWebPage(
+                                url = COMPUTER_KNOWLEDGE_URL,
+                                title = COMPUTER_KNOWLEDGE_TITLE
+                            )
+                        }
+                    )
+                    SettingItem(
+                        title = "WebVue组件库",
+                        onClick = {
+                            navigator.openWebPage(
+                                url = "https://qyani-ui.netlify.app/#/",
+                                title = "WebVue组件库"
+                            )
+                        }
+                    )
+                    SettingDivider()
                     SettingItem(
                         title = "主题外观",
                         onClick = { showThemeDialog = true }

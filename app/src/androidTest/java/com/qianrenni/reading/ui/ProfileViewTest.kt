@@ -13,6 +13,7 @@ import com.qianrenni.reading.navigation.Home
 import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.NavigationState
 import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.WebPage
 import com.qianrenni.reading.testUser
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import com.qianrenni.reading.views.user.ProfileView
@@ -103,5 +104,20 @@ class ProfileViewTest {
 
         assertNull(authRepository.user.value)
         assertTrue(navigator.currentState == Login)
+    }
+
+    @Test
+    fun opensComputerKnowledgeH5Entry() {
+        val navigator = setContent(FakeAuthRepository(initialUser = testUser()))
+
+        composeRule.onNodeWithText("计算机知识").assertIsDisplayed()
+        composeRule.onNodeWithText("计算机知识").performClick()
+
+        assertTrue(
+            navigator.currentState == WebPage(
+                url = "https://qyani.netlify.app/#/",
+                title = "星阑小筑·学习札记"
+            )
+        )
     }
 }

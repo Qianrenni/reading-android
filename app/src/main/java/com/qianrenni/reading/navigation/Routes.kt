@@ -31,6 +31,10 @@ data object Profile : NavKey
 @Serializable
 data object PrivacyPolicy : NavKey
 
+/** 通用 H5（WebView）页面；[title] 为空时显示网页自身标题。 */
+@Serializable
+data class WebPage(val url: String, val title: String? = null) : NavKey
+
 @Serializable
 data class BookRead(val bookId: Int, val chapterId: Int) : NavKey
 
