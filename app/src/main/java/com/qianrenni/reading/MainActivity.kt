@@ -10,7 +10,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.qianrenni.reading.data.repository.ThemeMode
 import com.qianrenni.reading.navigation.AppNavigation
 import com.qianrenni.reading.ui.theme.ReadingTheme
 
@@ -21,11 +20,8 @@ class MainActivity : ComponentActivity() {
         val themeRepository = (application as ReadingApplication).container.themeRepository
         setContent {
             val themeMode by themeRepository.mode.collectAsStateWithLifecycle()
-            val darkTheme = when (themeMode) {
-                ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-            }
+            val isSystemDark = isSystemInDarkTheme()
+            val darkTheme = themeMode.isDark(isSystemDark)
             // 手动切换主题时同步系统栏样式，避免状态栏图标与背景同色而看不清
             LaunchedEffect(darkTheme) {
                 enableEdgeToEdge(
@@ -33,7 +29,7 @@ class MainActivity : ComponentActivity() {
                     navigationBarStyle = systemBarStyle(darkTheme)
                 )
             }
-            ReadingTheme(darkTheme = darkTheme) {
+            ReadingTheme(themeMode = themeMode, isSystemDark = isSystemDark) {
                 AppNavigation()
             }
         }

@@ -72,17 +72,14 @@ class ModelsTest {
 
     @Test
     fun `ReadSettings defaults and font families`() {
-        val settings = ReadSettings(textColor = 1, backgroundColor = 2)
+        val settings = ReadSettings()
         assertEquals(18f, settings.fontSize)
         assertEquals(30f, settings.lineHeight)
+        assertEquals(2f, settings.letterSpacing)
         assertEquals(FontFamily.Default, settings.fontFamily)
 
         // 枚举与字体映射
         assertTrue(ReadFontFamily.entries.contains(ReadFontFamily.Default))
         assertEquals("默认", ReadFontFamily.Default.displayName)
-
-        // 主题
-        assertEquals("护眼", Themes.EyeTheme.label)
-        assertEquals("纹理", Themes.PaperTheme.label)
     }
 }

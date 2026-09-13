@@ -12,6 +12,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -58,7 +59,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.WindowInsetsRulers
 import androidx.compose.ui.platform.LocalDensity
@@ -91,6 +91,8 @@ import com.qianrenni.reading.data.model.ReadSettings
 import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.BookInfo
 import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.ui.theme.readingBackground
+import com.qianrenni.reading.ui.theme.readingPalette
 import com.qianrenni.reading.util.SystemBarUtils
 import com.qianrenni.reading.viewmodels.book.BookReadViewModel
 import kotlinx.coroutines.Dispatchers
@@ -224,22 +226,19 @@ fun BookReadView(
     var selectedCommentLine by remember { mutableStateOf<Int?>(null) }
     var selectedLineText by remember { mutableStateOf("") }
     var commentInput by remember { mutableStateOf("") }
-    val colorScheme = MaterialTheme.colorScheme
     val settingsRepository = appContainer().settingsRepository
+    val themeRepository = appContainer().themeRepository
+    // 阅读页配色跟随全应用统一主题（含“跟随系统”按系统深浅色切换）
+    val themeMode by themeRepository.mode.collectAsState()
+    val isSystemDark = isSystemInDarkTheme()
+    val palette = readingPalette(themeMode, isSystemDark)
     // 当前登录用户 id（响应式收集，登录态变化时重组）
     val currentUserId = appContainer().authRepository.user.collectAsState().value?.id
-    var readSettings by remember {
-        mutableStateOf(
-            ReadSettings(
-                textColor = colorScheme.onBackground.toArgb(),
-                backgroundColor = colorScheme.background.toArgb()
-            )
-        )
-    }
+    var readSettings by remember { mutableStateOf(ReadSettings()) }
 
-    // 收集阅读设置
+    // 收集阅读排版设置（颜色由主题决定，不单独保存）
     LaunchedEffect(Unit) {
-        settingsRepository.readSettings(colorScheme).collectLatest { settings ->
+        settingsRepository.readSettings().collectLatest { settings ->
             Log.d(TAG, "BookReadView:  $settings")
             readSettings = settings
         }
@@ -263,13 +262,12 @@ fun BookReadView(
             viewModel.loadBookAndCatalog(bookId, chapterId)
         },
         navigator = navigator,
-        modifier = Modifier
-            .background(color = Color(readSettings.backgroundColor))
+        containerColor = palette.background
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = Color(readSettings.backgroundColor))
+                .readingBackground(palette)
         ) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -336,7 +334,7 @@ fun BookReadView(
                             Icon(
                                 Icons.Default.ChevronLeft,
                                 contentDescription = "back",
-                                tint = Color(readSettings.textColor),
+                                tint = palette.text,
                                 modifier = Modifier
                                     .clickable {
                                         navigator.goBack()
@@ -350,7 +348,7 @@ fun BookReadView(
                                 style = TextStyle(
                                     fontSize = 12.sp,
                                     lineHeight = 12.sp,
-                                    color = Color(readSettings.textColor),
+                                    color = palette.text,
                                 )
                             )
                         }
@@ -363,6 +361,7 @@ fun BookReadView(
                             content = page.contents,
                             startLine = page.startLine,
                             settings = readSettings,
+                            textColor = palette.text,
                             firstIndent = page.firstLineIndent,
                             modifier = Modifier
                                 .weight(1f),
@@ -443,6 +442,9 @@ fun BookReadView(
                     AnimatedVisibility(uiState.showSettings) {
                         ReadingSettings(
                             settings = readSettings,
+                            themeMode = themeMode,
+                            isSystemDark = isSystemDark,
+                            onThemeChange = { themeRepository.setMode(it) },
                             onSettingsChange = { newSettings ->
                                 viewModel.viewModelScope.launch(Dispatchers.IO) {
                                     settingsRepository.updateSettings(newSettings)
@@ -596,6 +598,7 @@ private fun ChapterPage(
     content: List<String>,
     startLine: Int,
     settings: ReadSettings,
+    textColor: Color,
     firstIndent: Boolean = false,
     endClip: Boolean = false,
     commentCounts: Map<Int, Int> = emptyMap(),
@@ -623,7 +626,7 @@ private fun ChapterPage(
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 style = TextStyle(
-                    color = Color(settings.textColor),
+                    color = textColor,
                     fontSize = settings.fontSize.sp,
                     lineHeight = settings.lineHeight.sp,
                     letterSpacing = settings.letterSpacing.sp,
@@ -648,7 +651,7 @@ private fun ChapterPage(
                     ) {
                         LineCommentBubble(
                             count = commentCounts[line]?.takeIf { it > 0 },
-                            tint = Color(settings.textColor),
+                            tint = textColor,
                             fontSize = settings.fontSize,
                             onLineClick = { onLineClick(line, paragraph) },
                             modifier = Modifier.size(

@@ -1,6 +1,8 @@
 package com.qianrenni.reading.views.user
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +50,8 @@ import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.navigation.UpdatePassword
 import com.qianrenni.reading.navigation.openWebPage
+import com.qianrenni.reading.ui.theme.readingBackground
+import com.qianrenni.reading.ui.theme.readingPalette
 import com.qianrenni.reading.util.ApkInstaller
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.app.AppUpdateState
@@ -74,6 +78,7 @@ fun ProfileView(
     val user by authViewModel.getUser().collectAsStateWithLifecycle()
     val themeMode by themeRepository.mode.collectAsStateWithLifecycle()
     val updateState by updateViewModel.state.collectAsStateWithLifecycle()
+    val isSystemDark = isSystemInDarkTheme()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val appConfig = appContainer().appConfig
@@ -186,9 +191,17 @@ fun ProfileView(
                                     }
                                 )
                                 .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             RadioButton(selected = mode == themeMode, onClick = null)
+                            // 主题预览：该主题的纸张底色与质感
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .readingBackground(readingPalette(mode, isSystemDark))
+                            )
                             Text(text = mode.displayName)
                         }
                     }

@@ -50,4 +50,37 @@ class ThemeRepositoryTest {
             assertEquals(true, mode.displayName.isNotBlank())
         }
     }
+
+    @Test
+    fun `preset five themes plus system mode`() {
+        assertEquals(
+            listOf("跟随系统", "白天", "黑夜", "绿色护眼", "羊皮纸", "木制家具"),
+            ThemeMode.entries.map { it.displayName }
+        )
+    }
+
+    @Test
+    fun `isDark follows system only for SYSTEM mode`() {
+        assertEquals(true, ThemeMode.SYSTEM.isDark(systemDark = true))
+        assertEquals(false, ThemeMode.SYSTEM.isDark(systemDark = false))
+
+        assertEquals(false, ThemeMode.LIGHT.isDark(systemDark = true))
+        assertEquals(true, ThemeMode.DARK.isDark(systemDark = false))
+        assertEquals(false, ThemeMode.GREEN.isDark(systemDark = true))
+        assertEquals(false, ThemeMode.PARCHMENT.isDark(systemDark = true))
+        assertEquals(true, ThemeMode.WOOD.isDark(systemDark = false))
+    }
+
+    @Test
+    fun `persists every preset theme`() {
+        ThemeMode.entries.forEach { mode ->
+            val store = InMemoryKeyValueStore()
+            val repo = ThemeRepositoryImpl(store)
+
+            repo.setMode(mode)
+
+            assertEquals(mode, repo.mode.value)
+            assertEquals(mode, ThemeRepositoryImpl(store).mode.value)
+        }
+    }
 }

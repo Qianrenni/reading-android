@@ -2,33 +2,18 @@ package com.qianrenni.reading.data.model
 
 import androidx.compose.ui.text.font.FontFamily
 
-enum class Themes(
-    val label: String,
-    val textColor: Int,
-    val backgroundColor: Int
-) {
-    EyeTheme(
-        label = "护眼",
-        textColor = 0xff2d4a2d.toInt(),
-        backgroundColor = 0xffc7edcc.toInt()
-    ),
-    PaperTheme(
-        label = "纹理",
-        textColor = 0xff5b4636.toInt(),
-        backgroundColor = 0xfff5f0e1.toInt()
-    )
-}
-
+/**
+ * 阅读排版设置：字号 / 行高 / 字距 / 字体。
+ *
+ * 正文与纸张颜色由全应用统一的主题（`ThemeMode`）决定，不再单独保存，
+ * 因此阅读页的配色与整个 App 完全一致。
+ */
 data class ReadSettings(
     val fontSize: Float = 18f,
     val lineHeight: Float = 30f,
     val letterSpacing: Float = 2f,
-    val fontFamily: FontFamily = FontFamily.Default,
-    val textColor: Int,
-    val backgroundColor: Int
-) {
-
-}
+    val fontFamily: FontFamily = FontFamily.Default
+)
 
 enum class ReadFontFamily(val displayName: String, val value: FontFamily) {
     Default("默认", FontFamily.Default),

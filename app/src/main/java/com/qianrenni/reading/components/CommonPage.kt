@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.qianrenni.reading.common.CommonUiState
 import com.qianrenni.reading.navigation.Navigator
 
@@ -22,11 +23,14 @@ fun CommonPage(
     modifier: Modifier = Modifier,
     refresh: () -> Unit = {},
     navigator: Navigator? = null,
+    // 默认跟随当前主题；阅读页等需要自定义纸张色时可传入主题色
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable () -> Unit
 ) {
     Surface(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxSize(),
+        color = containerColor
     ) {
         if (uiState.pageStatus.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

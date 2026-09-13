@@ -1,8 +1,6 @@
 package com.qianrenni.reading.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -30,21 +27,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.qianrenni.reading.data.model.ReadFontFamily
 import com.qianrenni.reading.data.model.ReadSettings
-import com.qianrenni.reading.data.model.Themes
+import com.qianrenni.reading.data.repository.ThemeMode
+import com.qianrenni.reading.ui.theme.readingBackground
+import com.qianrenni.reading.ui.theme.readingPalette
 
 @Composable
 fun ReadingSettings(
     settings: ReadSettings,
+    themeMode: ThemeMode,
+    isSystemDark: Boolean,
+    onThemeChange: (ThemeMode) -> Unit,
     onSettingsChange: (ReadSettings) -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp),
     ) {
         Text(
-            "[设置完成后重进阅读页面即可]",
+            "[主题即时生效；字号 / 行高 / 字体重进阅读页面生效]",
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
             style = TextStyle(
@@ -52,57 +53,20 @@ fun ReadingSettings(
                 fontSize = 12.sp
             )
         )
-        Row(
+        // 主题与全应用（含个人中心）共用同一个 ThemeMode，切换后整 App 同步换肤
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text("主题")
-            for (it in Themes.entries) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp) // 设置圆形大小
-                        .background(
-                            color = Color(it.backgroundColor), // 内部填充色
-                            shape = CircleShape         // 圆形形状
-                        )
-                        .border(
-                            width = 2.dp,               // 边框宽度
-                            color = Color(it.textColor),       // 边框颜色（即原 textColor）
-                            shape = CircleShape         // 保持圆形
-                        )
-                        .clickable(onClick = {
-                            onSettingsChange(
-                                settings.copy(
-                                    textColor = it.textColor,
-                                    backgroundColor = it.backgroundColor
-                                )
-                            )
-                        })
+            items(ThemeMode.entries) { mode ->
+                ThemeSwatch(
+                    mode = mode,
+                    isSystemDark = isSystemDark,
+                    selected = mode == themeMode,
+                    onClick = { onThemeChange(mode) }
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(32.dp) // 设置圆形大小
-                    .background(
-                        color = MaterialTheme.colorScheme.background, // 内部填充色
-                        shape = CircleShape         // 圆形形状
-                    )
-                    .border(
-                        width = 2.dp,               // 边框宽度
-                        color = MaterialTheme.colorScheme.onBackground,       // 边框颜色（即原 textColor）
-                        shape = CircleShape         // 保持圆形
-                    )
-                    .clickable(onClick = {
-                        onSettingsChange(
-                            settings.copy(
-                                textColor = colorScheme.onBackground.toArgb(),
-                                backgroundColor = colorScheme.background.toArgb()
-                            )
-                        )
-                    })
-            )
-
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -178,5 +142,54 @@ fun ReadingSettings(
                 }
             }
         }
+    }
+}
+
+/**
+ * 主题色块：圆内直接渲染该主题的纸张质感与正文色，下方为名称；选中时高亮描边。
+ */
+@Composable
+private fun ThemeSwatch(
+    mode: ThemeMode,
+    isSystemDark: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val palette = readingPalette(mode, isSystemDark)
+    Column(
+        modifier = Modifier
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .readingBackground(palette)
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    },
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "文", color = palette.text, fontSize = 14.sp)
+        }
+        Text(
+            text = mode.displayName,
+            fontSize = 11.sp,
+            maxLines = 1,
+            color = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
     }
 }
