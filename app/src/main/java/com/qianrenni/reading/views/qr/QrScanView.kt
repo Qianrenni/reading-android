@@ -3,11 +3,14 @@ package com.qianrenni.reading.views.qr
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -138,6 +141,16 @@ fun QrScanView(
             }
             val analysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setResolutionSelector(
+                    ResolutionSelector.Builder()
+                        .setResolutionStrategy(
+                            ResolutionStrategy(
+                                Size(ANALYSIS_WIDTH, ANALYSIS_HEIGHT),
+                                ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                            )
+                        )
+                        .build()
+                )
                 .build()
                 .also { it.setAnalyzer(analysisExecutor, analyzer) }
             try {
@@ -158,10 +171,9 @@ fun QrScanView(
         }
     }
 
-    // 识别器与分析线程池随页面销毁释放
+    // 分析线程池随页面销毁释放（解码器本身无资源需要回收）
     DisposableEffect(Unit) {
         onDispose {
-            analyzer.close()
             analysisExecutor.shutdown()
         }
     }
@@ -288,6 +300,10 @@ private fun CameraPermissionHint(onRequest: () -> Unit) {
 private fun Context.hasCameraPermission(): Boolean =
     ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
+
+/** 分析帧分辨率：720p 足以识别登录二维码，又不会让纯 Java 解码拖慢取景。 */
+private const val ANALYSIS_WIDTH = 1280
+private const val ANALYSIS_HEIGHT = 720
 
 /** 把 CameraX 的 ListenableFuture 适配成挂起函数（避免额外引入 guava 适配依赖）。 */
 private suspend fun awaitCameraProvider(context: Context): ProcessCameraProvider =

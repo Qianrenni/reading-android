@@ -108,12 +108,12 @@ dependencies {
     implementation(libs.kotlinx.serialization.core)
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // 扫码登录：CameraX 取景 + ML Kit 二维码识别
+    // 扫码登录：CameraX 取景 + ZXing 识别二维码（纯 Java，release/debug 行为一致）
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.zxing.core)
 
     // 指纹解锁登录：BiometricPrompt（需要 FragmentActivity）
     implementation(libs.androidx.biometric)

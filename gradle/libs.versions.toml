@@ -20,7 +20,8 @@ lifecycleViewmodelNav3 = "2.11.0"
 kotlinxSerializationCore = "1.9.0"
 material3AdaptiveNav3 = "1.3.0-rc01"
 camerax = "1.4.2"
-mlkitBarcodeScanning = "17.3.0"
+# 二维码识别：ZXing core（纯 Java，无 GMS / 无 native / 无反射）
+zxing = "3.5.3"
 # 生物识别：biometric 1.1.0 是当前最新稳定版（1.2/1.4 仍为 alpha）
 biometric = "1.1.0"
 fragment = "1.8.9"
@@ -69,12 +70,14 @@ androidx-material3-adaptive-navigation3 = { group = "androidx.compose.material3.
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
-# 扫码登录：CameraX 取景 + ML Kit 识别二维码（离线模型，无需联网）
+# 扫码登录：CameraX 取景 + ZXing 识别二维码
+# 不用 ML Kit：其清单字符串反射注册 + native 库在 R8 混淆的 release 包中会初始化失败
+# （BarcodeScanning.getClient 抛 NPE），且 GMS 变体在无 GMS 的国产 ROM 上不可用
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
-mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 # 指纹解锁登录：BiometricPrompt（BiometricPrompt 需要 FragmentActivity，显式声明而非依赖传递）
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
