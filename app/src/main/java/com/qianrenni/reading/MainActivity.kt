@@ -2,18 +2,25 @@ package com.qianrenni.reading
 
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qianrenni.reading.navigation.AppNavigation
 import com.qianrenni.reading.ui.theme.ReadingTheme
 
-class MainActivity : ComponentActivity() {
+/**
+ * 应用唯一 Activity。
+ *
+ * 继承 [FragmentActivity] 而非 ComponentActivity：指纹解锁用到的
+ * `BiometricPrompt` 只接受 FragmentActivity（`setContent` / `enableEdgeToEdge`
+ * 等能力来自其父类 ComponentActivity，不受影响）。
+ */
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

@@ -32,6 +32,7 @@ import com.qianrenni.reading.views.book.BookReadView
 import com.qianrenni.reading.views.book.BookShelfView
 import com.qianrenni.reading.views.book.ReadingHistoryView
 import com.qianrenni.reading.views.legal.PrivacyPolicyView
+import com.qianrenni.reading.views.qr.QrScanView
 import com.qianrenni.reading.views.user.ProfileView
 import com.qianrenni.reading.views.web.WebPageView
 import io.ktor.util.reflect.instanceOf
@@ -62,7 +63,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
     // 定义需要显示底部导航栏的路由
     val routesWithBottomBar = listOf(Home::class, Bookshelf::class, History::class, Profile::class)
     // 自带 Scaffold/顶栏、自行处理系统栏内边距的页面
-    val routesWithoutPadding = listOf(BookRead::class, WebPage::class)
+    val routesWithoutPadding = listOf(BookRead::class, WebPage::class, QrScan::class)
     LaunchedEffect(Unit) {
         SnackBarManager.messages.collect { message ->
             snackBarHostState.showSnackbar(message)
@@ -97,6 +98,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
         userFeature(navigator)
         legalFeature(navigator)
         webFeature(navigator)
+        qrFeature(navigator)
     }
     Scaffold(
         modifier = Modifier.background(color = MaterialTheme.colorScheme.background),
@@ -165,4 +167,9 @@ private fun EntryProviderScope<NavKey>.webFeature(navigator: Navigator) {
             title = key.title
         )
     }
+}
+
+/** 扫码登录相关路由（手机端扫码授权网页端登录） */
+private fun EntryProviderScope<NavKey>.qrFeature(navigator: Navigator) {
+    entry<QrScan> { QrScanView(navigator = navigator) }
 }

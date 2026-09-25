@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 应用内下载并拉起 APK 安装（Android 8.0+ 需用户授权“安装未知应用”） -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 扫码登录网页端需要相机；无相机的设备仍可安装（entry 会提示不支持） -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:name=".ReadingApplication"

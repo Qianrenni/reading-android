@@ -14,8 +14,12 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,12 +39,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.qianrenni.reading.components.BiometricPromptHandler
 import com.qianrenni.reading.components.SettingItem
 import com.qianrenni.reading.data.model.User
 import com.qianrenni.reading.data.repository.ThemeMode
@@ -48,6 +54,7 @@ import com.qianrenni.reading.data.repository.ThemeRepository
 import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.QrScan
 import com.qianrenni.reading.navigation.UpdatePassword
 import com.qianrenni.reading.navigation.openWebPage
 import com.qianrenni.reading.ui.theme.readingBackground
@@ -57,6 +64,7 @@ import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.app.AppUpdateState
 import com.qianrenni.reading.viewmodels.app.AppUpdateViewModel
 import com.qianrenni.reading.viewmodels.app.UpdateStatus
+import com.qianrenni.reading.viewmodels.auth.BiometricViewModel
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -73,25 +81,45 @@ fun ProfileView(
     navigator: Navigator,
     authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory),
     themeRepository: ThemeRepository = appContainer().themeRepository,
-    updateViewModel: AppUpdateViewModel = viewModel(factory = appContainer().viewModelFactory)
+    updateViewModel: AppUpdateViewModel = viewModel(factory = appContainer().viewModelFactory),
+    biometricViewModel: BiometricViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val user by authViewModel.getUser().collectAsStateWithLifecycle()
     val themeMode by themeRepository.mode.collectAsStateWithLifecycle()
     val updateState by updateViewModel.state.collectAsStateWithLifecycle()
+    val biometricEnabled by biometricViewModel.isEnabled.collectAsStateWithLifecycle()
     val isSystemDark = isSystemInDarkTheme()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val appConfig = appContainer().appConfig
     var showServerDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showBiometricDialog by remember { mutableStateOf(false) }
     var serverUrl by remember { mutableStateOf(appConfig.currentBaseUrl()) }
 
+    // 指纹框唤起与结果回报（开启/登录都会经过它）
+    BiometricPromptHandler(biometricViewModel)
+
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = "个人中心",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "个人中心",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+            // 扫码登录网页端：扫网页端登录页的二维码即可在网页上登录
+            IconButton(onClick = { navigator.navigate(QrScan) }) {
+                Icon(
+                    imageVector = Icons.Filled.QrCodeScanner,
+                    contentDescription = "扫码登录网页端"
+                )
+            }
+        }
 
         // 顶部：个人信息（左侧头像 + 右侧用户名/账号信息）
         ProfileHeader(user = user)
@@ -135,6 +163,13 @@ fun ProfileView(
                     )
                     SettingDivider()
                     SettingItem(
+                        title = "指纹解锁",
+                        value = if (biometricEnabled) "已开启" else "未开启",
+                        onClick = { showBiometricDialog = true },
+                        modifier = Modifier.testTag("biometric_switch")
+                    )
+                    SettingDivider()
+                    SettingItem(
                         title = "服务器设置",
                         onClick = {
                             serverUrl = appConfig.currentBaseUrl()
@@ -152,6 +187,8 @@ fun ProfileView(
                     SettingItem(
                         title = "修改密码",
                         onClick = { navigator.navigate(UpdatePassword) }
+        // 注意：退出登录会保留指纹解锁的设备凭据（开关不关），这样下次可直接用指纹回到账号；
+        // 想彻底解绑请在「指纹解锁」里关闭
                     )
                 }
             }
@@ -209,6 +246,41 @@ fun ProfileView(
             },
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) { Text("关闭") }
+            }
+        )
+    }
+
+    // 指纹解锁开关对话框：开启需先通过指纹校验（确认是本人），关闭则撤销服务端凭据
+    if (showBiometricDialog) {
+        AlertDialog(
+            onDismissRequest = { showBiometricDialog = false },
+            modifier = Modifier.testTag("biometric_dialog"),
+            title = { Text("指纹解锁") },
+            text = {
+                Text(
+                    if (biometricEnabled) {
+                        "关闭后无法再用指纹快速登录，需要重新输入账号密码。"
+                    } else {
+                        "开启后，下次打开应用可直接用指纹登录（需先在系统设置中录入指纹/面容）。"
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBiometricDialog = false
+                    if (biometricEnabled) {
+                        biometricViewModel.disable()
+                    } else {
+                        biometricViewModel.requestEnable()
+                    }
+                }) {
+                    Text(if (biometricEnabled) "关闭" else "开启")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBiometricDialog = false }) {
+                    Text("取消")
+                }
             }
         )
     }

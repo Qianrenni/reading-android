@@ -5,6 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation3.runtime.NavBackStack
@@ -13,6 +16,7 @@ import com.qianrenni.reading.navigation.Home
 import com.qianrenni.reading.navigation.Login
 import com.qianrenni.reading.navigation.NavigationState
 import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.QrScan
 import com.qianrenni.reading.navigation.WebPage
 import com.qianrenni.reading.testUser
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
@@ -119,5 +123,28 @@ class ProfileViewTest {
                 title = "星阑小筑·学习札记"
             )
         )
+    }
+
+    @Test
+    fun opensQrScanEntry() {
+        val navigator = setContent(FakeAuthRepository(initialUser = testUser()))
+
+        composeRule.onNodeWithContentDescription("扫码登录网页端").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("扫码登录网页端").performClick()
+
+        assertTrue(navigator.currentState == QrScan)
+    }
+
+    @Test
+    fun biometricEntryOpensDialog() {
+        setContent(FakeAuthRepository(initialUser = testUser()))
+
+        composeRule.onNodeWithTag("biometric_switch").assertIsDisplayed()
+        composeRule.onNodeWithTag("biometric_switch").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("biometric_dialog").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("biometric_dialog").assertIsDisplayed()
     }
 }

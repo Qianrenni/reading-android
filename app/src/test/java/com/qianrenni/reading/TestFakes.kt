@@ -7,11 +7,16 @@ import com.qianrenni.reading.data.model.BookComment
 import com.qianrenni.reading.data.model.BookReadingProgress
 import com.qianrenni.reading.data.model.Catalog
 import com.qianrenni.reading.data.model.CommentPageResult
+import com.qianrenni.reading.data.model.DeviceCredential
+import com.qianrenni.reading.data.model.DeviceLoginResponse
 import com.qianrenni.reading.data.model.EmailVerifyRequest
 import com.qianrenni.reading.data.model.ForgotPasswordRequest
 import com.qianrenni.reading.data.model.LineCommentRequest
 import com.qianrenni.reading.data.model.LoginRequest
 import com.qianrenni.reading.data.model.LoginResponse
+import com.qianrenni.reading.data.model.QrLoginAction
+import com.qianrenni.reading.data.model.QrLoginStatus
+import com.qianrenni.reading.data.model.QrLoginStatusResponse
 import com.qianrenni.reading.data.model.ReadEvent
 import com.qianrenni.reading.data.model.RegisterRequest
 import com.qianrenni.reading.data.model.ShelfItem
@@ -19,6 +24,8 @@ import com.qianrenni.reading.data.model.UpdatePasswordRequest
 import com.qianrenni.reading.data.model.UpdateProgressRequest
 import com.qianrenni.reading.data.model.User
 import com.qianrenni.reading.data.remote.AuthApi
+import com.qianrenni.reading.data.remote.QrLoginApi
+import com.qianrenni.reading.data.remote.DeviceLoginApi
 import com.qianrenni.reading.data.remote.BookApi
 import com.qianrenni.reading.data.remote.CommentApi
 import com.qianrenni.reading.data.remote.NetworkResult
@@ -85,8 +92,50 @@ open class FakeAuthApi : AuthApi {
     override suspend fun verifyEmail(request: EmailVerifyRequest) = verifyEmailResult
 }
 
-open class FakeBookApi : BookApi {
-    var categoriesResult: NetworkResult<List<String>> = NetworkResult.Success(emptyList())
+/** 内存版扫码登录 API：记录上报的 (票据, 动作)，便于断言 ViewModel 状态机。 */
+open class FakeQrLoginApi : QrLoginApi {
+    var actionResult: NetworkResult<QrLoginStatusResponse> =
+        NetworkResult.Success(QrLoginStatusResponse(QrLoginStatus.SCANNED))
+
+    val actions = mutableListOf<Pair<String, QrLoginAction>>()
+
+    override suspend fun sendAction(
+        ticket: String,
+        action: QrLoginAction
+    ): NetworkResult<QrLoginStatusResponse> {
+        actions += ticket to action
+        return actionResult
+    }
+}
+
+/** 内存版设备凭据登录 API：记录调用次数，便于断言凭据生命周期。 */
+open class FakeDeviceLoginApi : DeviceLoginApi {
+    var createResult: NetworkResult<DeviceCredential> =
+        NetworkResult.Success(DeviceCredential(deviceToken = "device-1", expiresIn = 1000))
+    var loginResult: NetworkResult<DeviceLoginResponse> = NetworkResult.Failure("n/a")
+    var revokeResult: NetworkResult<Unit> = NetworkResult.Empty()
+
+    var createCount = 0
+    var revokeCount = 0
+    var lastLoginToken: String? = null
+
+    override suspend fun create(): NetworkResult<DeviceCredential> {
+        createCount++
+        return createResult
+    }
+
+    override suspend fun login(deviceToken: String): NetworkResult<DeviceLoginResponse> {
+        lastLoginToken = deviceToken
+        return loginResult
+    }
+
+    override suspend fun revoke(deviceToken: String): NetworkResult<Unit> {
+        revokeCount++
+        return revokeResult
+    }
+}
+
+open class FakeBookApi : BookApi {    var categoriesResult: NetworkResult<List<String>> = NetworkResult.Success(emptyList())
     var booksResult: NetworkResult<Array<Book>> = NetworkResult.Success(emptyArray())
     var searchResult: NetworkResult<Array<Book>> = NetworkResult.Success(emptyArray())
     var bookResult: NetworkResult<Book> = NetworkResult.Failure("n/a")

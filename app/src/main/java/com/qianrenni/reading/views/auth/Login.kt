@@ -4,15 +4,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -33,6 +37,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.qianrenni.reading.components.BiometricPromptHandler
 import com.qianrenni.reading.components.CaptchaImage
 import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.ForgetPassword
@@ -40,14 +45,18 @@ import com.qianrenni.reading.navigation.Navigator
 import com.qianrenni.reading.navigation.PrivacyPolicy
 import com.qianrenni.reading.navigation.Register
 import com.qianrenni.reading.util.SnackBarManager
+import com.qianrenni.reading.viewmodels.auth.BiometricViewModel
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
 
 @Composable
 fun LoginView(
     navigator: Navigator,
-    viewModel: LoginViewModel = viewModel(factory = appContainer().viewModelFactory)
+    viewModel: LoginViewModel = viewModel(factory = appContainer().viewModelFactory),
+    biometricViewModel: BiometricViewModel = viewModel(factory = appContainer().viewModelFactory)
 ) {
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
+    val biometricState by biometricViewModel.state.collectAsStateWithLifecycle()
+    val biometricEnabled by biometricViewModel.isEnabled.collectAsStateWithLifecycle()
     var privacyAgreed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.start()
@@ -58,6 +67,8 @@ fun LoginView(
             SnackBarManager.showMessage(error)
         }
     }
+    // 指纹框唤起与结果回报（未开启指纹解锁时不会触发）
+    BiometricPromptHandler(biometricViewModel)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -184,6 +195,22 @@ fun LoginView(
                 navigator.navigate(Register)
             }) {
                 Text(text = "没有账号? 立即注册")
+            }
+
+            // 指纹解锁登录：仅在设备支持且用户已开启时出现（先指纹校验，再用设备凭据换令牌）
+            if (biometricEnabled && biometricViewModel.isAvailable()) {
+                TextButton(
+                    onClick = { biometricViewModel.requestLogin() },
+                    enabled = !biometricState.isBusy,
+                    modifier = Modifier.testTag("biometric_login_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Fingerprint,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = if (biometricState.isBusy) "正在验证…" else "指纹解锁登录")
+                }
             }
         }
     }

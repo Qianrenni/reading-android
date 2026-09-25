@@ -13,8 +13,12 @@ import com.qianrenni.reading.data.remote.BookApi
 import com.qianrenni.reading.data.remote.BookApiImpl
 import com.qianrenni.reading.data.remote.CommentApi
 import com.qianrenni.reading.data.remote.CommentApiImpl
+import com.qianrenni.reading.data.remote.DeviceLoginApi
+import com.qianrenni.reading.data.remote.DeviceLoginApiImpl
 import com.qianrenni.reading.data.remote.HttpClientFactory
 import com.qianrenni.reading.data.remote.KtorTokenRefresher
+import com.qianrenni.reading.data.remote.QrLoginApi
+import com.qianrenni.reading.data.remote.QrLoginApiImpl
 import com.qianrenni.reading.data.remote.ReadingProgressApi
 import com.qianrenni.reading.data.remote.ReadingProgressApiImpl
 import com.qianrenni.reading.data.remote.ReportApi
@@ -30,6 +34,8 @@ import com.qianrenni.reading.data.repository.AppUpdateRepository
 import com.qianrenni.reading.data.repository.AppUpdateRepositoryImpl
 import com.qianrenni.reading.data.repository.AuthRepository
 import com.qianrenni.reading.data.repository.AuthRepositoryImpl
+import com.qianrenni.reading.data.repository.BiometricLoginRepository
+import com.qianrenni.reading.data.repository.BiometricLoginRepositoryImpl
 import com.qianrenni.reading.data.repository.EncryptedKeyValueStore
 import com.qianrenni.reading.data.repository.KtorFileDownloader
 import com.qianrenni.reading.data.repository.SessionManager
@@ -47,6 +53,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import com.qianrenni.reading.viewmodels.app.AppUpdateViewModel
 import com.qianrenni.reading.viewmodels.auth.AuthViewModel
+import com.qianrenni.reading.viewmodels.auth.BiometricViewModel
 import com.qianrenni.reading.viewmodels.auth.ForgetPasswordViewModel
 import com.qianrenni.reading.viewmodels.auth.LoginViewModel
 import com.qianrenni.reading.viewmodels.auth.RegisterViewModel
@@ -56,8 +63,10 @@ import com.qianrenni.reading.viewmodels.book.BookReadViewModel
 import com.qianrenni.reading.viewmodels.book.HistoryViewModel
 import com.qianrenni.reading.viewmodels.book.HomeViewModel
 import com.qianrenni.reading.viewmodels.book.ShelfViewModel
+import com.qianrenni.reading.viewmodels.qr.QrScanViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import com.qianrenni.reading.util.BiometricAuth
 import com.qianrenni.reading.util.AndroidApkReader
 import com.qianrenni.reading.util.installedAppVersion
 import java.io.File
@@ -105,6 +114,10 @@ class AppContainer(private val context: Context) {
 
     // ---- API（接口注入，便于测试替换为 Fake）----
     val authApi: AuthApi = AuthApiImpl(apiClient)
+    val qrLoginApi: QrLoginApi = QrLoginApiImpl(apiClient)
+    // 设备凭据登录：签发/撤销需要登录态（apiClient），换取令牌必须绕过 Auth 插件（bareClient）
+    val deviceLoginApi: DeviceLoginApi =
+        DeviceLoginApiImpl(apiClient, bareClient) { appConfig.currentBaseUrl() }
     val bookApi: BookApi = BookApiImpl(apiClient)
     val commentApi: CommentApi = CommentApiImpl(apiClient)
     val readingProgressApi: ReadingProgressApi = ReadingProgressApiImpl(apiClient)
@@ -114,6 +127,11 @@ class AppContainer(private val context: Context) {
 
     // ---- Repository ----
     val authRepository: AuthRepository = AuthRepositoryImpl(sessionManager, authApi, tokenRefresher)
+    // 指纹解锁登录：设备凭据单独存一份（不随退出登录清除），必须指纹校验后才取出使用
+    val biometricRepository: BiometricLoginRepository = BiometricLoginRepositoryImpl(
+        store = EncryptedKeyValueStore(context, "biometric_prefs"),
+        deviceLoginApi = deviceLoginApi
+    )
 
     // ---- 应用更新：更新包由后端静态目录提供（{baseUrl}static/guga.apk）----
     val appUpdateRepository: AppUpdateRepository = AppUpdateRepositoryImpl(
@@ -144,10 +162,20 @@ class AppContainer(private val context: Context) {
         initializer { UpdatePasswordViewModel(userApi, authRepository, ioDispatcher) }
         initializer { HomeViewModel(bookApi, ioDispatcher) }
         initializer { BookInfoViewModel(bookApi, commentApi, ioDispatcher) }
+        initializer {
+            BiometricViewModel(
+                biometricRepository = biometricRepository,
+                authRepository = authRepository,
+                // 设备能力探测注入到 VM，避免 VM 直接依赖 Android 框架
+                isBiometricAvailable = { BiometricAuth.isAvailable(context) },
+                ioDispatcher = ioDispatcher
+            )
+        }
         initializer { HistoryViewModel(bookApi, readingProgressApi, shelfApi, ioDispatcher) }
         initializer { ShelfViewModel(bookApi, readingProgressApi, shelfApi, ioDispatcher) }
         initializer { BookReadViewModel(bookApi, commentApi, readingProgressApi, reportApi, ioDispatcher) }
         initializer { AppUpdateViewModel(appUpdateRepository, ioDispatcher) }
+        initializer { QrScanViewModel(qrLoginApi, authRepository, ioDispatcher) }
     }
 
     private companion object {

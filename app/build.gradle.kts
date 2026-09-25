@@ -53,8 +53,8 @@ android {
         applicationId = "com.qianrenni.reading"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -107,6 +107,17 @@ dependencies {
 //    implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // 扫码登录：CameraX 取景 + ML Kit 二维码识别
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
+
+    // 指纹解锁登录：BiometricPrompt（需要 FragmentActivity）
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
 
     // ViewModel for Compose
     implementation(libs.androidx.lifecycle.viewmodel.compose)

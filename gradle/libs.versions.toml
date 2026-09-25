@@ -19,6 +19,11 @@ nav3Core = "1.1.3"
 lifecycleViewmodelNav3 = "2.11.0"
 kotlinxSerializationCore = "1.9.0"
 material3AdaptiveNav3 = "1.3.0-rc01"
+camerax = "1.4.2"
+mlkitBarcodeScanning = "17.3.0"
+# 生物识别：biometric 1.1.0 是当前最新稳定版（1.2/1.4 仍为 alpha）
+biometric = "1.1.0"
+fragment = "1.8.9"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -63,6 +68,17 @@ androidx-material3-adaptive-navigation3 = { group = "androidx.compose.material3.
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+
+# 扫码登录：CameraX 取景 + ML Kit 识别二维码（离线模型，无需联网）
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
+
+# 指纹解锁登录：BiometricPrompt（BiometricPrompt 需要 FragmentActivity，显式声明而非依赖传递）
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
 
 # Test
 ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
