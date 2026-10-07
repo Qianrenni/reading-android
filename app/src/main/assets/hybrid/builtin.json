@@ -1,0 +1,9 @@
+[
+  {
+    "route": "hybrid-demo-h5",
+    "engine": "h5",
+    "entry": "https://qyani.netlify.app/#/",
+    "appKey": "guga-builtin",
+    "versionCode": 1
+  }
+]

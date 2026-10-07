@@ -32,6 +32,7 @@ import com.qianrenni.reading.views.book.BookReadView
 import com.qianrenni.reading.views.book.BookShelfView
 import com.qianrenni.reading.views.book.ReadingHistoryView
 import com.qianrenni.reading.views.legal.PrivacyPolicyView
+import com.qianrenni.reading.views.hybrid.HybridPageView
 import com.qianrenni.reading.views.qr.QrScanView
 import com.qianrenni.reading.views.user.ProfileView
 import com.qianrenni.reading.views.web.WebPageView
@@ -46,12 +47,17 @@ private const val TAG = "AppNavigation"
 fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContainer().viewModelFactory)) {
     val snackBarHostState = remember { SnackbarHostState() }
     val isLogin by authViewModel.isLogin.collectAsStateWithLifecycle()
+    val container = appContainer()
     // 1. 创建状态（内部持有多个 backStacks）
     val navigationState = rememberNavigationState(
         startRoute = Home,
         topLevelRoutes = setOf(Home, History, Profile, Bookshelf)
     )
     val navigator = remember { Navigator(navigationState) }
+    // JSBridge 的路由能力需要导航器：组合建立后交给容器持有者
+    LaunchedEffect(navigator) {
+        container.navigatorHolder.navigator = navigator
+    }
     navigator.addInterceptor { _, from, isBack ->
         return@addInterceptor if (isBack && from == Login && !isLogin) {
             Log.d(TAG, "AppNavigation: interceptor ")
@@ -62,8 +68,8 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
     }
     // 定义需要显示底部导航栏的路由
     val routesWithBottomBar = listOf(Home::class, Bookshelf::class, History::class, Profile::class)
-    // 自带 Scaffold/顶栏、自行处理系统栏内边距的页面
-    val routesWithoutPadding = listOf(BookRead::class, WebPage::class, QrScan::class)
+    // 自带 Scaffold/顶栏、自行处理系统栏内边距的页面（容器页面也自带顶栏与全屏引擎视图）
+    val routesWithoutPadding = listOf(BookRead::class, WebPage::class, QrScan::class, HybridPage::class)
     LaunchedEffect(Unit) {
         SnackBarManager.messages.collect { message ->
             snackBarHostState.showSnackbar(message)
@@ -99,6 +105,7 @@ fun AppNavigation(authViewModel: AuthViewModel = viewModel(factory = appContaine
         legalFeature(navigator)
         webFeature(navigator)
         qrFeature(navigator)
+        hybridFeature(navigator)
     }
     Scaffold(
         modifier = Modifier.background(color = MaterialTheme.colorScheme.background),
@@ -172,4 +179,16 @@ private fun EntryProviderScope<NavKey>.webFeature(navigator: Navigator) {
 /** 扫码登录相关路由（手机端扫码授权网页端登录） */
 private fun EntryProviderScope<NavKey>.qrFeature(navigator: Navigator) {
     entry<QrScan> { QrScanView(navigator = navigator) }
+}
+
+/** 容器页面路由（native / h5 / rn 三引擎由容器路由表解析） */
+private fun EntryProviderScope<NavKey>.hybridFeature(navigator: Navigator) {
+    entry<HybridPage> { key ->
+        HybridPageView(
+            route = key.route,
+            title = key.title,
+            forcedEngine = key.engine,
+            navigator = navigator
+        )
+    }
 }

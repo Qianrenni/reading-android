@@ -30,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -56,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.qianrenni.reading.di.appContainer
 import com.qianrenni.reading.navigation.Navigator
+import com.qianrenni.reading.navigation.openHybrid
 import com.qianrenni.reading.util.SnackBarManager
 import com.qianrenni.reading.viewmodels.qr.QrScanViewModel
 import kotlinx.coroutines.launch
@@ -120,6 +122,12 @@ fun QrScanView(
         if (state.isConfirmed) {
             navigator.goBack()
         }
+    }
+
+    // 页面包安装完成：交给容器渲染（引擎由容器路由表决定，可能是 h5 也可能是 rn）
+    LaunchedEffect(state.installedRoute) {
+        val route = viewModel.consumeInstalledRoute() ?: return@LaunchedEffect
+        navigator.openHybrid(route = route)
     }
 
     // 相机生命周期：权限就绪后绑定预览 + 分析用例，离开页面或权限变化时解绑
@@ -236,6 +244,47 @@ fun QrScanView(
             dismissButton = {
                 TextButton(
                     onClick = { viewModel.cancel() },
+                    enabled = !state.isSubmitting
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    // 扫到页面包：确认后才下载安装，安装完成由上面的副作用交给容器渲染
+    state.pendingBundle?.let { request ->
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelBundle() },
+            title = { Text("发现页面包") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("包：${request.appKey}")
+                    Text("版本：v${request.versionCode}")
+                    Text(
+                        text = "下载并校验后立即在本机渲染这个版本，不影响其他用户。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (state.isSubmitting) {
+                        LinearProgressIndicator(
+                            progress = { state.installProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.confirmBundleInstall() },
+                    enabled = !state.isSubmitting
+                ) {
+                    Text(if (state.isSubmitting) "下载中…" else "下载并打开")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.cancelBundle() },
                     enabled = !state.isSubmitting
                 ) {
                     Text("取消")

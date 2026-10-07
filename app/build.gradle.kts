@@ -119,6 +119,9 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment)
 
+    // 容器引擎：RN 运行时（bundle 由容器自行管理路径，不启用 RN 的 Gradle 插件/codegen）
+    implementation(libs.react.android)
+
     // ViewModel for Compose
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
